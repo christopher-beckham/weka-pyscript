@@ -3,19 +3,29 @@ package weka.classifiers.pyscript;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
+import java.util.Vector;
 
 import weka.classifiers.AbstractClassifier;
 import weka.core.Attribute;
 import weka.core.BatchPredictor;
 import weka.core.CapabilitiesHandler;
 import weka.core.Instances;
+import weka.core.Utils;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.NominalToBinary;
 import weka.filters.unsupervised.attribute.Remove;
 import weka.filters.unsupervised.attribute.ReplaceMissingValues;
 import weka.python.PythonSession;
 
+/**
+ * WEKA class that calls an arbitrary Python script that can take
+ * training and testing instances (in the form of Numpy arrays)
+ * and return predictions.
+ * @author cjb60
+ *
+ */
 public class PyScriptClassifier extends AbstractClassifier implements
 	  BatchPredictor, CapabilitiesHandler {
 	
@@ -130,6 +140,13 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    		m_trainingData.numInstances(), insts.numInstances());
 		    
 		    /*
+		     * Tell the script that it is being invoked by WEKA and pass
+		     * some params to it.
+		     */
+		    session.executeScript("use_weka = True", m_debug);
+		    session.executeScript("weka_params = " + getPythonFileParams(), m_debug);
+		    
+		    /*
 		     * Ok, now this script should recognise X_train, y_train,
 		     * X_test, and y_test.
 		     */
@@ -161,7 +178,30 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    
 	    return null;
 	}
-
+	
+	@Override
+	public void setOptions(String[] options) throws Exception {
+		String tmp = Utils.getOption("F", options);
+		if(tmp.length() != 0) { 
+			setPythonFile(tmp);
+		}
+		tmp = Utils.getOption("P", options);
+		if(tmp.length() != 0) {
+			setPythonFileParams(tmp);
+		}
+	}
+	
+	@Override
+	public String[] getOptions() {
+		Vector<String> result = new Vector<String>();
+		result.add("-F");
+		result.add( "" + getPythonFile() );
+		result.add("-P");
+		result.add( "" + getPythonFileParams() );
+		Collections.addAll(result, super.getOptions());
+	    return result.toArray(new String[result.size()]);
+	}
+	
 	public static void main(String[] argv) {
 		runClassifier(new PyScriptClassifier(), argv);
 	}
