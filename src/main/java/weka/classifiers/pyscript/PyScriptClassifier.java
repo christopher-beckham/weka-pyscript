@@ -118,7 +118,17 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    
 	    try {  
 	    	
+	    	insts = Filter.useFilter(insts, m_replaceMissing);
 	        insts = Filter.useFilter(insts, m_nominalToBinary);
+	        
+	        int numClasses = insts.numClasses();
+	        
+	        // remove the class attribute
+	        Remove r = new Remove();
+	        r.setAttributeIndices("" + (insts.classIndex() + 1));
+	        r.setInputFormat(insts);
+	        insts = Filter.useFilter(insts, r);
+	        insts.setClassIndex(-1);
 	    	
 		    PythonSession session = PythonSession.acquireSession(this);
 		    
@@ -126,15 +136,15 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		     * Ok, push the training data to Python. The variables will be called
 		     * X and Y, so let's execute to script to rename these.
 		     */
-		    session.instancesToPythonAsScikietLearn(m_trainingData, "test123", m_debug);
+		    session.instancesToPythonAsScikietLearn(m_trainingData, "train", m_debug);
 		    session.executeScript("X_train = X\ny_train=Y", m_debug);
 		    
 		    /*
 		     * Push the test data. These will also be X and Y, so have a
 		     * script that renames these to X_test and y_test.
 		     */
-		    session.instancesToPythonAsScikietLearn(insts, "test123", m_debug);
-		    session.executeScript("X_test = X\ny_test=Y", m_debug);
+		    session.instancesToPythonAsScikietLearn(insts, "test", m_debug);
+		    session.executeScript("X_test = X\n", m_debug);
 		    
 		    System.out.format("train, test = %s, %s\n",
 		    		m_trainingData.numInstances(), insts.numInstances());
@@ -143,24 +153,25 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		     * Tell the script that it is being invoked by WEKA and pass
 		     * some params to it.
 		     */
-		    session.executeScript("use_weka = True", m_debug);
-		    session.executeScript("weka_params = " + getPythonFileParams(), m_debug);
+		    session.executeScript("use_weka = True\n", m_debug);
+		    //session.executeScript("weka_params = " + getPythonFileParams() + "\n", m_debug);
+		    session.executeScript("preds = None\n", m_debug);
 		    
 		    /*
 		     * Ok, now this script should recognise X_train, y_train,
 		     * X_test, and y_test.
 		     */
 		    String pyFile = loadFile( getPythonFile() );
-		    List<String> outAndErr = session.executeScript(pyFile, m_debug);
+		    List<String> outAndErr = session.executeScript(pyFile, true);
 		    System.out.println(outAndErr.get(0));
 		    
-		    double[][] distributions = new double[insts.numInstances()][insts.numClasses()];
+		    double[][] distributions = new double[insts.numInstances()][numClasses];
 		    
 			List<Object> preds = 
 		    	(List<Object>) session.getVariableValueFromPythonAsJson("preds", m_debug);
 		    for(int y = 0; y < insts.numInstances(); y++) {
 		    	Object vector = preds.get(y);
-		    	double[] probs = new double[insts.numClasses()];
+		    	double[] probs = new double[numClasses];
 				List<Double> probsForThisInstance = (List<Double>) vector;
 		    	for(int x = 0; x < probs.length; x++) {
 		    		probs[x] = probsForThisInstance.get(x);
