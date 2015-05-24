@@ -14,6 +14,7 @@ import weka.core.CapabilitiesHandler;
 import weka.core.Instances;
 import weka.core.Utils;
 import weka.filters.Filter;
+import weka.filters.supervised.instance.StratifiedRemoveFolds;
 import weka.filters.unsupervised.attribute.NominalToBinary;
 import weka.filters.unsupervised.attribute.Remove;
 import weka.filters.unsupervised.attribute.ReplaceMissingValues;
@@ -35,9 +36,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	 * Default values for the parameters.
 	 */
 	private final String DEFAULT_PYFILE = "scripts/test.py";
-	private final String DEFAULT_PYFILE_PARAMS = "";
+	private final String DEFAULT_PYFILE_PARAMS = "[]";
 	
 	private Instances m_trainingData = null;
+	private Instances m_validData = null;
+	
 	private boolean m_debug = false;
 	
 	private Filter m_nominalToBinary = null;
@@ -78,7 +81,23 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		
 	    m_nominalToBinary = new NominalToBinary();
 	    m_nominalToBinary.setInputFormat(data);
-	    m_trainingData = Filter.useFilter(data, m_nominalToBinary);
+	    data = Filter.useFilter(data, m_nominalToBinary);
+	    
+	    /*
+	     * Ok, split the data up into a training set and
+	     * validation set. Whatever the training set is now,
+	     * 75% of it will be training and 25% will be valid.
+	     */
+	    
+	    Filter stratifiedFolds = new StratifiedRemoveFolds();
+	    stratifiedFolds.setInputFormat(data);
+	    // seed = 0, invert = true, num folds = 4, fold number = 1
+	    stratifiedFolds.setOptions(new String[] {"-S","0",  "-V",  "-N","4",  "-F","1" } );
+	    m_trainingData = Filter.useFilter(data, stratifiedFolds);
+	    // this time, don't invert the selection
+	    stratifiedFolds.setOptions( new String[] {"-S","0",  "-N","4",  "-F","1" } );
+	    m_validData = Filter.useFilter(data, stratifiedFolds);
+
 	}
 
 	@Override
@@ -137,7 +156,13 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		     * X and Y, so let's execute to script to rename these.
 		     */
 		    session.instancesToPythonAsScikietLearn(m_trainingData, "train", m_debug);
-		    session.executeScript("X_train = X\ny_train=Y", m_debug);
+		    session.executeScript("X_train = X\ny_train=Y\n", m_debug);
+		    
+		    /*
+		     * Push the validation data.
+		     */
+		    session.instancesToPythonAsScikietLearn(m_validData, "valid", m_debug);
+		    session.executeScript("X_valid = X\ny_valid=Y\n", m_debug);
 		    
 		    /*
 		     * Push the test data. These will also be X and Y, so have a
@@ -146,8 +171,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    session.instancesToPythonAsScikietLearn(insts, "test", m_debug);
 		    session.executeScript("X_test = X\n", m_debug);
 		    
-		    System.out.format("train, test = %s, %s\n",
-		    		m_trainingData.numInstances(), insts.numInstances());
+		    System.out.format("train, valid, test = %s, %s, %s\n",
+		    		m_trainingData.numInstances(), m_validData.numInstances(), insts.numInstances());
 		    
 		    /*
 		     * Tell the script that it is being invoked by WEKA and pass
@@ -156,6 +181,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    session.executeScript("use_weka = True\n", m_debug);
 		    //session.executeScript("weka_params = " + getPythonFileParams() + "\n", m_debug);
 		    session.executeScript("preds = None\n", m_debug);
+		    
+		    /*
+		     * Pass the arguments to the VM as well
+		     */
+		    session.executeScript("import sys\nsys.argv = [None] + " + getPythonFileParams(), m_debug);
 		    
 		    /*
 		     * Ok, now this script should recognise X_train, y_train,
