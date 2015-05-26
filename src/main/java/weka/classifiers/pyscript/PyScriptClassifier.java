@@ -11,6 +11,7 @@ import weka.classifiers.AbstractClassifier;
 import weka.core.Attribute;
 import weka.core.BatchPredictor;
 import weka.core.CapabilitiesHandler;
+import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Utils;
 import weka.filters.Filter;
@@ -35,8 +36,9 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	/**
 	 * Default values for the parameters.
 	 */
-	private final String DEFAULT_PYFILE = "scripts/test.py";
-	private final String DEFAULT_PYFILE_PARAMS = "[]";
+	private final String DEFAULT_PYFILE = "/Users/cjb60/github/ordinal-nn/train-nn.py";
+	private final String DEFAULT_TRAIN_PYFILE_PARAMS = "['train', None, 'default']";
+	private final String DEFAULT_TEST_PYFILE_PARAMS = "['test', None, None, 'default']";
 	
 	private Instances m_trainingData = null;
 	private Instances m_validData = null;
@@ -46,30 +48,54 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private Filter m_nominalToBinary = null;
 	private Filter m_replaceMissing = null;
 	
-	/** The default Python script to execute **/
-	private String m_pyFile = DEFAULT_PYFILE;
+	private String m_pickledModel = null;
 	
-	/** If there are any parameters to pass to the script **/
-	private String m_pyFileParams = DEFAULT_PYFILE_PARAMS;
+	/** The default Python script to execute */
+	private String m_pyTrainFile = DEFAULT_PYFILE;
+	
+	/** If there are any parameters to pass to the training script */
+	private String m_pyTrainFileParams = DEFAULT_TRAIN_PYFILE_PARAMS;
+	
+	/** If there are any parameters to pass to the testing script */
+	private String m_pyTestFileParams = DEFAULT_TEST_PYFILE_PARAMS;
 	
 	public String getPythonFile() {
-		return m_pyFile;
+		return m_pyTrainFile;
 	}
 	
 	public void setPythonFile(String pyFile) {
-		m_pyFile = pyFile;
+		m_pyTrainFile = pyFile;
 	}
 	
-	public String getPythonFileParams() {
-		return m_pyFileParams;
+	public String getTrainPythonFileParams() {
+		return m_pyTrainFileParams;
 	}
 	
-	public void setPythonFileParams(String pyFileParams) {
-		m_pyFileParams = pyFileParams;
+	public void setTrainPythonFileParams(String pyTrainFileParams) {
+		m_pyTrainFileParams = pyTrainFileParams;
+	}
+	
+	public String getTestPythonFileParams() {
+		return m_pyTestFileParams;
+	}
+	
+	public void setTestPythonFileParams(String pyTestFileParams) {
+		m_pyTestFileParams = pyTestFileParams;
 	}
 
 	@Override
 	public void buildClassifier(Instances data) throws Exception {
+		
+	    if (!PythonSession.pythonAvailable()) {
+	        // try initializing
+	        if (!PythonSession.initSession("python", m_debug)) {
+	          String envEvalResults = PythonSession.getPythonEnvCheckResults();
+	          throw new Exception("Was unable to start python environment: "
+	            + envEvalResults);
+	        }
+	    }
+	    
+	    PythonSession session = PythonSession.acquireSession(this);
 		
 		/*
 		 * Prepare training data for script
@@ -96,7 +122,46 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    m_trainingData = Filter.useFilter(data, stratifiedFolds);
 	    // this time, don't invert the selection
 	    stratifiedFolds.setOptions( new String[] {"-S","0",  "-N","4",  "-F","1" } );
-	    m_validData = Filter.useFilter(data, stratifiedFolds);
+	    m_validData = Filter.useFilter(data, stratifiedFolds);    
+	    
+	    /*
+	     * Ok, push the training data to Python. The variables will be called
+	     * X and Y, so let's execute to script to rename these.
+	     */
+	    session.instancesToPythonAsScikietLearn(m_trainingData, "train", m_debug);
+	    session.executeScript("X_train = X\ny_train=Y\n", m_debug);
+	    
+	    /*
+	     * Push the validation data.
+	     */
+	    session.instancesToPythonAsScikietLearn(m_validData, "valid", m_debug);
+	    session.executeScript("X_valid = X\ny_valid=Y\n", m_debug);
+	    
+	    System.out.format("train, valid = %s, %s\n",
+	    		m_trainingData.numInstances(), m_validData.numInstances());
+	    
+	    /*
+	     * Tell the script that it is being invoked by WEKA and pass
+	     * some params to it.
+	     */
+	    session.executeScript("WEKA_NUM_CLASSES = " + m_trainingData.numClasses(), m_debug);
+	    session.executeScript("import sys\nsys.argv = "
+	    		+ "[None] + " + getTrainPythonFileParams(), m_debug);
+	    
+	    /*
+	     * Build the classifier.
+	     */
+	    String pyFile = loadFile( getPythonFile() );
+	    List<String> outAndErr = session.executeScript(pyFile, true);
+	    
+	    System.out.println(outAndErr.get(0));
+	    
+	    /*
+	     * Now save the model parameters.
+	     */
+	    m_pickledModel = session.getVariableValueFromPythonAsPickledObject("best_weights", true);
+	    
+	    PythonSession.releaseSession(this);
 
 	}
 
@@ -119,6 +184,15 @@ public class PyScriptClassifier extends AbstractClassifier implements
 			sb.append(line + "\n");
 		}
 		return sb.toString();
+	}
+	
+	@Override
+	public double[] distributionForInstance(Instance instance) throws Exception {
+	
+		Instances temp = new Instances(instance.dataset(), 0);
+		temp.add(instance);
+		
+		return distributionsForInstances(temp)[0];
 	}
 
 	@Override
@@ -152,40 +226,28 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    PythonSession session = PythonSession.acquireSession(this);
 		    
 		    /*
-		     * Ok, push the training data to Python. The variables will be called
-		     * X and Y, so let's execute to script to rename these.
-		     */
-		    session.instancesToPythonAsScikietLearn(m_trainingData, "train", m_debug);
-		    session.executeScript("X_train = X\ny_train=Y\n", m_debug);
-		    
-		    /*
-		     * Push the validation data.
-		     */
-		    session.instancesToPythonAsScikietLearn(m_validData, "valid", m_debug);
-		    session.executeScript("X_valid = X\ny_valid=Y\n", m_debug);
-		    
-		    /*
 		     * Push the test data. These will also be X and Y, so have a
 		     * script that renames these to X_test and y_test.
 		     */
 		    session.instancesToPythonAsScikietLearn(insts, "test", m_debug);
 		    session.executeScript("X_test = X\n", m_debug);
 		    
-		    System.out.format("train, valid, test = %s, %s, %s\n",
-		    		m_trainingData.numInstances(), m_validData.numInstances(), insts.numInstances());
+		    /*
+		     * Push the weights of the saved model over.
+		     */
+		    session.setPythonPickledVariableValue("WEKA_BEST_WEIGHTS", m_pickledModel, true);
+		    
+		    System.out.format("test = %s\n", insts.numInstances());
 		    
 		    /*
 		     * Tell the script that it is being invoked by WEKA and pass
 		     * some params to it.
 		     */
-		    session.executeScript("use_weka = True\n", m_debug);
-		    //session.executeScript("weka_params = " + getPythonFileParams() + "\n", m_debug);
-		    session.executeScript("preds = None\n", m_debug);
+		    session.executeScript("WEKA_NUM_CLASSES = " + m_trainingData.numClasses(), m_debug);
+		    session.executeScript("import sys\nsys.argv = "
+		    		+ "[None] + " + getTestPythonFileParams(), m_debug);
 		    
-		    /*
-		     * Pass the arguments to the VM as well
-		     */
-		    session.executeScript("import sys\nsys.argv = [None] + " + getPythonFileParams(), m_debug);
+		    
 		    
 		    /*
 		     * Ok, now this script should recognise X_train, y_train,
@@ -222,23 +284,30 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	
 	@Override
 	public void setOptions(String[] options) throws Exception {
-		String tmp = Utils.getOption("F", options);
+		String tmp = Utils.getOption("fn", options);
 		if(tmp.length() != 0) { 
 			setPythonFile(tmp);
 		}
-		tmp = Utils.getOption("P", options);
+		tmp = Utils.getOption("xp", options);
 		if(tmp.length() != 0) {
-			setPythonFileParams(tmp);
+			setTrainPythonFileParams(tmp);
+		}
+		tmp = Utils.getOption("yp", options);
+		if(tmp.length() != 0) {
+			setTestPythonFileParams(tmp);
 		}
 	}
 	
 	@Override
 	public String[] getOptions() {
 		Vector<String> result = new Vector<String>();
-		result.add("-F");
+		result.add("-fn");
 		result.add( "" + getPythonFile() );
-		result.add("-P");
-		result.add( "" + getPythonFileParams() );
+		result.add("-xp");
+		result.add( "" + getTrainPythonFileParams() );
+		result.add("-yp");
+		result.add( "" + getTestPythonFileParams() );
+		
 		Collections.addAll(result, super.getOptions());
 	    return result.toArray(new String[result.size()]);
 	}

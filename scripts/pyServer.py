@@ -45,7 +45,7 @@ except:
 
 _global_connection = None
 _global_env = {}
-_local_env = {}
+# _local_env = {}
 # _headers = {}
 
 _global_startup_debug = False
@@ -360,7 +360,7 @@ def send_variable_value(message):
 
 def send_variable_list(message):
     variables = []
-    for key, value in dict(_local_env).items():
+    for key, value in dict(_global_env).items():
         variable_type = type(value).__name__
         if not (
                             variable_type == 'classob' or variable_type == 'module' or variable_type == 'function'):
@@ -487,7 +487,7 @@ def receive_pickled_variable_value(message):
         else:
             pickled_var_value = str(pickled_var_value)
         object = pickle.loads(pickled_var_value)
-        _local_env[var_name] = object
+        _global_env[var_name] = object
         ack_command_ok()
     else:
         error = 'put variable value json message does not contain a ' \
