@@ -14,6 +14,7 @@ import weka.core.CapabilitiesHandler;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Utils;
+import weka.core.WekaException;
 import weka.filters.Filter;
 import weka.filters.supervised.instance.StratifiedRemoveFolds;
 import weka.filters.unsupervised.attribute.NominalToBinary;
@@ -82,6 +83,18 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	public void setTestPythonFileParams(String pyTestFileParams) {
 		m_pyTestFileParams = pyTestFileParams;
 	}
+	
+	private void pushArgs(PythonSession session) throws Exception {
+	    session.executeScript("args['num_classes'] = " + m_trainingData.numClasses(), m_debug);
+	    session.executeScript("args['num_attributes'] = " + m_trainingData.numAttributes(), m_debug);
+	    session.executeScript("args['num_instances'] = " + m_trainingData.numInstances(), m_debug);
+
+	    String[] extraParams = getTrainPythonFileParams().split(",");
+	    for(String param : extraParams) {
+	    	String[] paramSplit = param.split("=");
+	    	session.executeScript("args[" + paramSplit[0] + "] = " + paramSplit[1], m_debug);
+	    }
+	}
 
 	@Override
 	public void buildClassifier(Instances data) throws Exception {
@@ -124,35 +137,42 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    stratifiedFolds.setOptions( new String[] {"-S","0",  "-N","4",  "-F","1" } );
 	    m_validData = Filter.useFilter(data, stratifiedFolds);    
 	    
+	    session.executeScript("args = dict()", m_debug);
+	    
 	    /*
 	     * Ok, push the training data to Python. The variables will be called
 	     * X and Y, so let's execute to script to rename these.
 	     */
 	    session.instancesToPythonAsScikietLearn(m_trainingData, "train", m_debug);
-	    session.executeScript("X_train = X\ny_train=Y\n", m_debug);
+	    session.executeScript("args['X_train'] = X\nargs['y_train']=Y\n", m_debug);
 	    
 	    /*
 	     * Push the validation data.
 	     */
 	    session.instancesToPythonAsScikietLearn(m_validData, "valid", m_debug);
-	    session.executeScript("X_valid = X\ny_valid=Y\n", m_debug);
+	    session.executeScript("args['X_valid'] = X\nargs['y_valid']=Y\n", m_debug);
 	    
 	    System.out.format("train, valid = %s, %s\n",
 	    		m_trainingData.numInstances(), m_validData.numInstances());
 	    
-	    /*
-	     * Tell the script that it is being invoked by WEKA and pass
-	     * some params to it.
-	     */
-	    session.executeScript("WEKA_NUM_CLASSES = " + m_trainingData.numClasses(), m_debug);
-	    session.executeScript("import sys\nsys.argv = "
-	    		+ "[None] + " + getTrainPythonFileParams(), m_debug);
+
+	    pushArgs(session);
+	    
+	    System.out.println("Number of classes: " + m_trainingData.numClasses());
+	    System.out.println("Number of attributes: " + m_trainingData.numAttributes());
+	    System.out.println("Number of instances: " + m_trainingData.numInstances());
+	   
 	    
 	    /*
 	     * Build the classifier.
 	     */
-	    String pyFile = loadFile( getPythonFile() );
-	    List<String> outAndErr = session.executeScript(pyFile, true);
+	    
+	    String driver = "import imp\n"
+	    		+ "cls = imp.load_source('train','" + getPythonFile() + "')\n" 
+	    		+ "best_weights = cls.train(args)";
+	    
+	    //String pyFile = loadFile( getPythonFile() );
+	    List<String> outAndErr = session.executeScript(driver, true);
 	    
 	    System.out.println(outAndErr.get(0));
 	    
@@ -225,37 +245,32 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    	
 		    PythonSession session = PythonSession.acquireSession(this);
 		    
+		    session.executeScript("args = dict()", m_debug);
+		    pushArgs(session);
+		   
+		    
 		    /*
 		     * Push the test data. These will also be X and Y, so have a
 		     * script that renames these to X_test and y_test.
 		     */
 		    session.instancesToPythonAsScikietLearn(insts, "test", m_debug);
-		    session.executeScript("X_test = X\n", m_debug);
+		    session.executeScript("args['X_test'] = X\n", m_debug);
 		    
 		    /*
 		     * Push the weights of the saved model over.
 		     */
-		    session.setPythonPickledVariableValue("WEKA_BEST_WEIGHTS", m_pickledModel, true);
+		    session.setPythonPickledVariableValue("best_weights", m_pickledModel, true);
 		    
 		    System.out.format("test = %s\n", insts.numInstances());
 		    
-		    /*
-		     * Tell the script that it is being invoked by WEKA and pass
-		     * some params to it.
-		     */
-		    session.executeScript("WEKA_NUM_CLASSES = " + m_trainingData.numClasses(), m_debug);
-		    session.executeScript("import sys\nsys.argv = "
-		    		+ "[None] + " + getTestPythonFileParams(), m_debug);
 		    
+		    String driver = "import imp\n"
+		    		+ "cls = imp.load_source('test','" + getPythonFile() + "')\n" 
+		    		+ "preds = cls.test(args, best_weights)";
 		    
-		    
-		    /*
-		     * Ok, now this script should recognise X_train, y_train,
-		     * X_test, and y_test.
-		     */
-		    String pyFile = loadFile( getPythonFile() );
-		    List<String> outAndErr = session.executeScript(pyFile, true);
+		    List<String> outAndErr = session.executeScript(driver, true);
 		    System.out.println(outAndErr.get(0));
+		    
 		    
 		    double[][] distributions = new double[insts.numInstances()][numClasses];
 		    
