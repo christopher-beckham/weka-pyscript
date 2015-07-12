@@ -37,9 +37,10 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	/**
 	 * Default values for the parameters.
 	 */
-	private final String DEFAULT_PYFILE = "/Users/cjb60/github/ordinal-nn/train-nn.py";
-	private final String DEFAULT_TRAIN_PYFILE_PARAMS = "['train', None, 'default']";
-	private final String DEFAULT_TEST_PYFILE_PARAMS = "['test', None, None, 'default']";
+	private final String DEFAULT_PYFILE = "/Users/cjb60/github/ordinal-nn/train.py";
+	private final String DEFAULT_TRAIN_PYFILE_PARAMS = 
+			"'num_hidden_units'=10,'epochs'=10,'batch_size'=128,'lambda'=0.001,'alpha'=0.01,'kappa'=True";
+	private final String DEFAULT_TEST_PYFILE_PARAMS = DEFAULT_TRAIN_PYFILE_PARAMS;
 	
 	private Instances m_trainingData = null;
 	private Instances m_validData = null;
