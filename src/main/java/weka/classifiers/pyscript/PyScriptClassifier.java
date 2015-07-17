@@ -1,5 +1,7 @@
 package weka.classifiers.pyscript;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -13,6 +15,7 @@ import weka.core.BatchPredictor;
 import weka.core.CapabilitiesHandler;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.Randomizable;
 import weka.core.Utils;
 import weka.core.WekaException;
 import weka.filters.Filter;
@@ -31,30 +34,29 @@ import weka.python.PythonSession;
  *
  */
 public class PyScriptClassifier extends AbstractClassifier implements
-	  BatchPredictor, CapabilitiesHandler {
+	  BatchPredictor, CapabilitiesHandler, Randomizable {
 	
 	private static final long serialVersionUID = 2846535265976949760L;
 	
 	/**
 	 * Default values for the parameters.
 	 */
-	private final String DEFAULT_PYFILE = "/Users/cjb60/github/ordinal-nn/train.py";
+	private final String DEFAULT_PYFILE = "<path to python script>";
 	private final String DEFAULT_TRAIN_PYFILE_PARAMS = 
-			"'num_hidden_units'=10,'epochs'=100,'batch_size'=128,'lambda'=0.001,'alpha'=0.01,'kappa'=True";
+			"<parameters>";
 	private final String DEFAULT_TEST_PYFILE_PARAMS = DEFAULT_TRAIN_PYFILE_PARAMS;
 	
 	private final boolean DEFAULT_SHOULD_STANDARDIZE = false;
 	private final boolean DEFAULT_SHOULD_BINARIZE = false;
 	private final boolean DEFAULT_SHOULD_IMPUTE = false;
 	private final boolean DEFAULT_USE_VALIDATION_SET = false;
+	private final int DEFAULT_SEED = 0;
 	
 	private boolean m_shouldStandardize = DEFAULT_SHOULD_STANDARDIZE;
 	private boolean m_shouldBinarize = DEFAULT_SHOULD_BINARIZE;
 	private boolean m_shouldImpute = DEFAULT_SHOULD_IMPUTE;
 	private boolean m_useValidationSet = DEFAULT_USE_VALIDATION_SET;
-	
-	private Instances m_trainingData = null;
-	private Instances m_validData = null;
+	private int m_seed = DEFAULT_SEED;
 	
 	private boolean m_debug = false;
 	
@@ -64,7 +66,15 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	
 	private String m_pickledModel = null;
 	
-	private PythonSession m_session = null;
+	private transient PythonSession m_session = null;
+	
+	private String m_modelString = null;
+	
+	private int m_numClasses = 0;
+	private int m_numAttributes = 0;
+	private int m_numInstances = 0;
+	private String m_className = null;
+	private String[] m_attrNames = null;
 	
 	/** The default Python script to execute */
 	private String m_pyTrainFile = DEFAULT_PYFILE;
@@ -131,107 +141,155 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_useValidationSet = b;
 	}
 	
-	private void pushArgs(PythonSession session) throws Exception {
-	    session.executeScript("args['num_classes'] = " + m_trainingData.numClasses(), m_debug);
-	    session.executeScript("args['num_attributes'] = " + m_trainingData.numAttributes(), m_debug);
-	    session.executeScript("args['num_instances'] = " + m_trainingData.numInstances(), m_debug);
-
-	    String[] extraParams = getTrainPythonFileParams().split(",");
-	    for(String param : extraParams) {
-	    	String[] paramSplit = param.split("=");
-	    	session.executeScript("args[" + paramSplit[0] + "] = " + paramSplit[1], m_debug);
+	private void pushArgs(PythonSession session, boolean trainMode) throws Exception {
+		
+		System.out.println("num classes = " + m_numClasses);
+		
+		// pass general information related to the training data
+	    session.executeScript("args['num_classes'] = " + m_numClasses, m_debug);
+	    session.executeScript("args['num_attributes'] = " + m_numAttributes, m_debug);
+	    session.executeScript("args['num_instances'] = " + m_numInstances, m_debug);
+	    
+	    // pass attribute information
+	    StringBuilder attrNames = new StringBuilder("args['attributes'] = [");
+	    for(int i = 0; i < m_numAttributes; i++) {
+	    	String attrName = m_attrNames[i];
+	    	attrName = attrName.replace("'", "").replace("\"", "");
+	    	attrNames.append( "'" + attrName + "'" );
+	    	if(i != m_numAttributes-1) {
+	    		attrNames.append(",");
+	    	}
+	    }
+	    attrNames.append("]");
+	    session.executeScript( attrNames.toString(), m_debug);
+	    
+	    // pass class name
+	    String classAttr = m_className.replace("'", "").replace("\"", "");
+	    session.executeScript( "args['class'] = '" + classAttr + "']", m_debug);    
+	    
+	    String customParams = null;
+	    if(trainMode) {
+	    	customParams = getTrainPythonFileParams();
+	    } else {
+	    	customParams = getTestPythonFileParams();
+	    }
+	    // pass custom parameters from -xp or -yp
+	    if( !customParams.equals("") ) {
+		    String[] extraParams = customParams.split(",");
+		    for(String param : extraParams) {
+		    	String[] paramSplit = param.split("=");
+		    	session.executeScript("args[" + paramSplit[0] + "] = " + paramSplit[1], m_debug);
+		    }
 	    }
 	}
 
 	@Override
-	public void buildClassifier(Instances data) throws Exception {
+	public void buildClassifier(Instances data) {
 		
-		initPythonSession();
-	    
+		try {
 		
-		/*
-		 * Prepare training data for script
-		 */
-	    if( getShouldImpute() ) {
-	    	m_replaceMissing = new ReplaceMissingValues();
-			m_replaceMissing.setInputFormat(data);
-			data = Filter.useFilter(data, m_replaceMissing);
-	    }
-		if( getShouldBinarize() ) {
-			m_nominalToBinary = new NominalToBinary();
-	    	m_nominalToBinary.setInputFormat(data);
-	    	data = Filter.useFilter(data, m_nominalToBinary);
+			// see if the python file exists
+			if( ! new File(getPythonFile()).exists() ) {
+				throw new FileNotFoundException( getPythonFile() + " doesn't exist!");
+			}
+			
+			initPythonSession();
+		    		
+			/*
+			 * Prepare training data for script
+			 */
+		    if( getShouldImpute() ) {
+		    	m_replaceMissing = new ReplaceMissingValues();
+				m_replaceMissing.setInputFormat(data);
+				data = Filter.useFilter(data, m_replaceMissing);
+		    }
+			if( getShouldBinarize() ) {
+				m_nominalToBinary = new NominalToBinary();
+		    	m_nominalToBinary.setInputFormat(data);
+		    	data = Filter.useFilter(data, m_nominalToBinary);
+			}
+			if( getShouldStandardize() ) {
+				m_standardize = new Standardize();
+				m_standardize.setInputFormat(data);
+				data = Filter.useFilter(data, m_standardize);
+			}
+			
+			Instances validData = null;
+		    
+		    /*
+		     * Ok, split the data up into a training set and
+		     * validation set. Whatever the training set is now,
+		     * 75% of it will be training and 25% will be valid.
+		     */	    
+			if( getUseValidationSet() ) {
+				System.err.println("Use validation set");
+			    Filter stratifiedFolds = new StratifiedRemoveFolds();
+			    stratifiedFolds.setInputFormat(data);
+			    // seed = 0, invert = true, num folds = 4, fold number = 1
+			    stratifiedFolds.setOptions(new String[] {"-S", ""+getSeed(),  "-V",  "-N","4",  "-F","1" } );
+			    data = Filter.useFilter(data, stratifiedFolds);
+			    // this time, don't invert the selection
+			    stratifiedFolds.setOptions( new String[] {"-S",""+getSeed(),  "-N","4",  "-F","1" } );
+			    validData = Filter.useFilter(data, stratifiedFolds);
+			} else {
+				//;
+			}
+		    
+		    m_session.executeScript("args = dict()", m_debug);
+		    
+		    /*
+		     * Ok, push the training data to Python. The variables will be called
+		     * X and Y, so let's execute to script to rename these.
+		     */
+		    m_session.instancesToPythonAsScikietLearn(data, "train", m_debug);
+		    m_session.executeScript("args['X_train'] = X\nargs['y_train']=Y\n", m_debug);
+		    
+		    /*
+		     * Push the validation data.
+		     */
+		    if( getUseValidationSet() ) {
+		    	m_session.instancesToPythonAsScikietLearn(validData, "valid", m_debug);
+		    	m_session.executeScript("args['X_valid'] = X\nargs['y_valid']=Y\n", m_debug);
+		    }
+		    
+		    //System.out.format("train, valid = %s, %s\n",
+		    //		m_trainingData.numInstances(), m_validData.numInstances());
+		    
+		    m_numClasses = data.numClasses();
+		    m_numAttributes = data.numAttributes() - 1;
+		    m_numInstances = data.numInstances();
+		    m_className = data.classAttribute().name();
+		    m_attrNames = new String[ data.numAttributes() - 1 ];
+		    for(int i = 0; i < data.numAttributes()-1; i++) {
+		    	m_attrNames[i] = data.attribute(i).name();
+		    }
+	
+		    pushArgs(m_session, true);
+		    
+		    System.out.println("Number of classes: " + m_numClasses);
+		    System.out.println("Number of attributes: " + m_numAttributes);
+		    System.out.println("Number of instances: " + m_numInstances);
+		    
+		    // build the classifier
+		    String driver = "best_weights = cls.train(args)";
+		    m_session.executeScript(driver, true);
+		    
+		    // save model parameters
+		    m_pickledModel = m_session.getVariableValueFromPythonAsPickledObject("best_weights", true);
+		    
+		    // get model description
+		    driver = "model_desc = cls.describe(args, best_weights)";
+		    m_session.executeScript(driver, true);
+		    m_modelString = m_session.getVariableValueFromPythonAsPlainString("model_desc", m_debug);
+		    System.out.println("Model string:" + m_modelString);
+		    
+		    //PythonSession.releaseSession(this);
+	    
+		} catch(Exception ex) {
+			ex.printStackTrace();
+		} finally {
+			closePythonSession();
 		}
-		if( getShouldStandardize() ) {
-			m_standardize = new Standardize();
-			m_standardize.setInputFormat(data);
-			data = Filter.useFilter(data, m_standardize);
-		}
-	    
-	    /*
-	     * Ok, split the data up into a training set and
-	     * validation set. Whatever the training set is now,
-	     * 75% of it will be training and 25% will be valid.
-	     */	    
-		if( getUseValidationSet() ) {
-			System.err.println("Use validation set");
-		    Filter stratifiedFolds = new StratifiedRemoveFolds();
-		    stratifiedFolds.setInputFormat(data);
-		    // seed = 0, invert = true, num folds = 4, fold number = 1
-		    stratifiedFolds.setOptions(new String[] {"-S","0",  "-V",  "-N","4",  "-F","1" } );
-		    m_trainingData = Filter.useFilter(data, stratifiedFolds);
-		    // this time, don't invert the selection
-		    stratifiedFolds.setOptions( new String[] {"-S","0",  "-N","4",  "-F","1" } );
-		    m_validData = Filter.useFilter(data, stratifiedFolds);
-		} else {
-			m_trainingData = data;
-		}
-	    
-	    m_session.executeScript("args = dict()", m_debug);
-	    
-	    /*
-	     * Ok, push the training data to Python. The variables will be called
-	     * X and Y, so let's execute to script to rename these.
-	     */
-	    m_session.instancesToPythonAsScikietLearn(m_trainingData, "train", m_debug);
-	    m_session.executeScript("args['X_train'] = X\nargs['y_train']=Y\n", m_debug);
-	    
-	    /*
-	     * Push the validation data.
-	     */
-	    if( getUseValidationSet() ) {
-	    	m_session.instancesToPythonAsScikietLearn(m_validData, "valid", m_debug);
-	    	m_session.executeScript("args['X_valid'] = X\nargs['y_valid']=Y\n", m_debug);
-	    }
-	    
-	    //System.out.format("train, valid = %s, %s\n",
-	    //		m_trainingData.numInstances(), m_validData.numInstances());
-	    
-
-	    pushArgs(m_session);
-	    
-	    System.out.println("Number of classes: " + m_trainingData.numClasses());
-	    System.out.println("Number of attributes: " + m_trainingData.numAttributes());
-	    System.out.println("Number of instances: " + m_trainingData.numInstances());
-	   
-	    
-	    /*
-	     * Build the classifier.
-	     */
-	    
-	    String driver = "best_weights = cls.train(args)";
-	    
-	    //String pyFile = loadFile( getPythonFile() );
-	    List<String> outAndErr = m_session.executeScript(driver, true);
-	    
-	    System.out.println(outAndErr.get(0));
-	    
-	    /*
-	     * Now save the model parameters.
-	     */
-	    m_pickledModel = m_session.getVariableValueFromPythonAsPickledObject("best_weights", true);
-	    
-	    //PythonSession.releaseSession(this);
 
 	}
 
@@ -245,15 +303,6 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	public String getBatchSize() {
 		// TODO Auto-generated method stub
 		return null;
-	}
-	
-	private String loadFile(String filename) throws IOException {
-		List<String> contents = Files.readAllLines(Paths.get(filename));
-		StringBuffer sb = new StringBuffer();
-		for(String line : contents) {
-			sb.append(line + "\n");
-		}
-		return sb.toString();
 	}
 	
 	private void initPythonSession() throws Exception {
@@ -282,83 +331,19 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    
 	}
 	
+	private void closePythonSession() {
+		PythonSession.releaseSession(this);
+	}
+	
 	@Override
 	@SuppressWarnings("unchecked")
 	public double[] distributionForInstance(Instance inst)
 			throws Exception {
 		
-		Instances insts = new Instances(inst.dataset(), 0);
-		insts.add(inst);
+		Instances insts = new Instances(inst.dataset());
 		
-	    initPythonSession();
-	    
-	    try {
-	    	
-		    if( getShouldImpute() ) {
-		    	insts = Filter.useFilter(insts, m_replaceMissing);
-		    }
-			if( getShouldBinarize() ) {
-				insts = Filter.useFilter(insts, m_nominalToBinary);
-			}
-			if( getShouldStandardize() ) {
-				insts = Filter.useFilter(insts, m_standardize);
-			}
-	        
-	        int numClasses = insts.numClasses();
-	        
-	        // remove the class attribute
-	        Remove r = new Remove();
-	        r.setAttributeIndices("" + (insts.classIndex() + 1));
-	        r.setInputFormat(insts);
-	        insts = Filter.useFilter(insts, r);
-	        insts.setClassIndex(-1);
-		    
-		    m_session.executeScript("args = dict()", m_debug);
-		    pushArgs(m_session);
-		   
-		    
-		    /*
-		     * Push the test data. These will also be X and Y, so have a
-		     * script that renames these to X_test and y_test.
-		     */
-		    m_session.instancesToPythonAsScikietLearn(insts, "test", m_debug);
-		    m_session.executeScript("args['X_test'] = X\n", m_debug);
-		    
-		    /*
-		     * Push the weights of the saved model over.
-		     */
-		    m_session.setPythonPickledVariableValue("best_weights", m_pickledModel, true);
-		    
-		    System.out.format("test = %s\n", insts.numInstances());
-		    
-		    
-		    String driver = "preds = cls.test(args, best_weights)";
-		    
-		    List<String> outAndErr = m_session.executeScript(driver, true);
-		    System.out.println(outAndErr.get(0));
-		    
-		    
-		    //double[] distribution = new double[numClasses];
-		    
-			List<Object> preds = 
-		    	(List<Object>) m_session.getVariableValueFromPythonAsJson("preds", m_debug);
-
-	    	Object vector = preds.get(0);
-	    	double[] probs = new double[numClasses];
-			List<Double> probsForThisInstance = (List<Double>) vector;
-	    	for(int x = 0; x < probs.length; x++) {
-	    		probs[x] = probsForThisInstance.get(x);
-	    	}
-	    	
-	    	return probs;
-			
-	    } catch(Exception ex) {
-			ex.printStackTrace();
-		} finally {
-			//PythonSession.releaseSession(this);
-		}
-	    
-	    return null;
+		return distributionsForInstances(insts)[0];
+		
 	}
 	
 	@Override
@@ -367,14 +352,13 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		if(tmp.length() != 0) { 
 			setPythonFile(tmp);
 		}
+		
 		tmp = Utils.getOption("xp", options);
-		if(tmp.length() != 0) {
-			setTrainPythonFileParams(tmp);
-		}
+		setTrainPythonFileParams(tmp);
+
 		tmp = Utils.getOption("yp", options);
-		if(tmp.length() != 0) {
-			setTestPythonFileParams(tmp);
-		}	
+		setTestPythonFileParams(tmp);
+		
 		setShouldImpute( Utils.getFlag("im", options) );
 		setShouldBinarize( Utils.getFlag("bn", options) );
 		setShouldStandardize( Utils.getFlag("sd", options) );
@@ -402,19 +386,103 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		Collections.addAll(result, super.getOptions());
 	    return result.toArray(new String[result.size()]);
 	}
-	
-	public static void main(String[] argv) {
-		runClassifier(new PyScriptClassifier(), argv);
-	}
 
 	@Override
 	public double[][] distributionsForInstances(Instances insts)
 			throws Exception {
+		
 		double[][] dists = new double[insts.numInstances()][insts.numClasses()];
-		for(int i = 0; i < insts.numInstances(); i++) {
-			dists[i] = distributionForInstance(insts.get(i));
+		
+	    initPythonSession();
+	    
+	    try {
+	    	
+		    if( getShouldImpute() ) {
+		    	insts = Filter.useFilter(insts, m_replaceMissing);
+		    }
+			if( getShouldBinarize() ) {
+				insts = Filter.useFilter(insts, m_nominalToBinary);
+			}
+			if( getShouldStandardize() ) {
+				insts = Filter.useFilter(insts, m_standardize);
+			}
+	        
+	        int numClasses = insts.numClasses();
+	        
+	        // remove the class attribute
+	        Remove r = new Remove();
+	        r.setAttributeIndices("" + (insts.classIndex() + 1));
+	        r.setInputFormat(insts);
+	        insts = Filter.useFilter(insts, r);
+	        insts.setClassIndex(-1);
+		    
+		    m_session.executeScript("args = dict()", m_debug);
+		    pushArgs(m_session, false);	   
+		    
+		    /*
+		     * Push the test data. These will also be X and Y, so have a
+		     * script that renames these to X_test and y_test.
+		     */
+		    m_session.instancesToPythonAsScikietLearn(insts, "test", m_debug);
+		    m_session.executeScript("args['X_test'] = X\n", m_debug);
+		    
+		    /*
+		     * Push the weights of the saved model over.
+		     */
+		    m_session.setPythonPickledVariableValue("best_weights", m_pickledModel, true);
+		    
+		    System.out.format("test = %s\n", insts.numInstances());	    
+		    
+		    String driver = "preds = cls.test(args, best_weights)";
+		    
+		    List<String> outAndErr = m_session.executeScript(driver, true);
+		    System.out.println(outAndErr.get(0));
+		    
+		    
+		    //double[] distribution = new double[numClasses];
+		    
+			List<Object> preds = 
+		    	(List<Object>) m_session.getVariableValueFromPythonAsJson("preds", m_debug);
+
+			for(int y = 0; y < preds.size(); y++) {
+		    	Object vector = preds.get(y);
+		    	double[] probs = new double[numClasses];
+				List<Double> probsForThisInstance = (List<Double>) vector;
+		    	for(int x = 0; x < probs.length; x++) {
+		    		probs[x] = probsForThisInstance.get(x);
+		    	}
+		    	dists[y] = probs;
+			}
+	    	
+	    	return dists;
+			
+	    } catch(Exception ex) {
+			ex.printStackTrace();
+		} finally {
+			closePythonSession();
 		}
-		return dists;
+	    
+	    return null;
+		
+	}
+	
+	@Override
+	public String toString() {
+		return m_modelString;
+	}
+
+	@Override
+	public void setSeed(int seed) {
+		m_seed = seed;
+	}
+
+	@Override
+	public int getSeed() {
+		return m_seed;
+	}
+	
+	public static void main(String[] argv) {
+		runClassifier(new PyScriptClassifier(), argv);
 	}
 
 }
