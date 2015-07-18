@@ -1,7 +1,6 @@
 import theano
 from theano import tensor as T
 import numpy as np
-
 import gzip
 import cPickle as pickle
 
@@ -51,8 +50,7 @@ def describe(args, weights):
     return st
 
 
-def test(args, weights):
-    
+def test(args, weights):    
     w = theano.shared( np.zeros( (args["num_attributes"], 1) ), name='w')
     b = theano.shared( 1.0, name='b' )
     w.set_value( weights[0] )
@@ -63,7 +61,6 @@ def test(args, weights):
     pred = theano.function([x], out)
 
     X_test = args["X_test"]
-
     return pred(X_test).tolist()
 
 

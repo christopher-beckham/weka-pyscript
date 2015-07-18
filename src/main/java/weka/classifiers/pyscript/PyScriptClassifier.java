@@ -16,8 +16,12 @@ import weka.core.CapabilitiesHandler;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Randomizable;
+import weka.core.TechnicalInformation;
+import weka.core.TechnicalInformation.Field;
+import weka.core.TechnicalInformationHandler;
 import weka.core.Utils;
 import weka.core.WekaException;
+import weka.core.TechnicalInformation.Type;
 import weka.filters.Filter;
 import weka.filters.supervised.instance.StratifiedRemoveFolds;
 import weka.filters.unsupervised.attribute.NominalToBinary;
@@ -34,7 +38,7 @@ import weka.python.PythonSession;
  *
  */
 public class PyScriptClassifier extends AbstractClassifier implements
-	  BatchPredictor, CapabilitiesHandler, Randomizable {
+	  BatchPredictor, CapabilitiesHandler, Randomizable, TechnicalInformationHandler {
 	
 	private static final long serialVersionUID = 2846535265976949760L;
 	
@@ -479,6 +483,20 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	@Override
 	public int getSeed() {
 		return m_seed;
+	}
+	
+	public String globalInfo() {  
+		return "Class for calling classifiers that are Python scripts."
+		+ "For more information, see\n\n"
+		+ getTechnicalInformation().toString();
+	}
+	
+	@Override
+	public TechnicalInformation getTechnicalInformation() {
+		TechnicalInformation result = new TechnicalInformation(Type.TECHREPORT);
+		result.setValue(Field.AUTHOR, "C. Beckham");
+		result.setValue(Field.TITLE, "A simple approach to create Python classifiers for WEKA" );
+		return result;
 	}
 	
 	public static void main(String[] argv) {
