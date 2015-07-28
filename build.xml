@@ -198,6 +198,13 @@
       </fileset>
     </copy>
 
+    <mkdir dir="${dist}/${package}/datasets" />
+    <copy todir="${dist}/${package}/datasets" >
+      <fileset dir="datasets">
+        <include name="*.arff" />
+      </fileset>
+    </copy>
+
     <mkdir dir="${dist}/${package}/doc"/>
     <copy todir="${dist}/${package}/doc" >
        <fileset dir="${doc}">
