@@ -189,18 +189,27 @@
          <include name="*.zip"/>
        </fileset>
     </copy>
+
+    <mkdir dir="${dist}/${package}/scripts" />
+    <copy todir="${dist}/${package}/scripts" >
+      <fileset dir="scripts">
+        <include name="linear-reg.py" />
+        <include name="zeror.py" />
+      </fileset>
+    </copy>
+
     <mkdir dir="${dist}/${package}/doc"/>
     <copy todir="${dist}/${package}/doc" >
        <fileset dir="${doc}">
          <include name="**/*"/>
        </fileset>
     </copy>
-    <mkdir dir="${dist}/${package}/resources"/>
+    <!-- <mkdir dir="${dist}/${package}/resources"/>
     <copy todir="${dist}/${package}/resources" >
        <fileset dir="${resources}">
          <include name="**/*"/>
        </fileset>
-    </copy>
+    </copy> -->
     <mkdir dir="${dist}/${package}/src"/>
     <copy todir="${dist}/${package}" >
        <fileset dir=".">
