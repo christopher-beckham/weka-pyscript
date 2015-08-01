@@ -245,14 +245,14 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		     * Ok, push the training data to Python. The variables will be called
 		     * X and Y, so let's execute to script to rename these.
 		     */
-		    m_session.instancesToPythonAsScikietLearn(data, "train", m_debug);
+		    m_session.instancesToPythonAsScikitLearn(data, "train", m_debug);
 		    m_session.executeScript("args['X_train'] = X\nargs['y_train']=Y\n", m_debug);
 		    
 		    /*
 		     * Push the validation data.
 		     */
 		    if( getUseValidationSet() ) {
-		    	m_session.instancesToPythonAsScikietLearn(validData, "valid", m_debug);
+		    	m_session.instancesToPythonAsScikitLearn(validData, "valid", m_debug);
 		    	m_session.executeScript("args['X_valid'] = X\nargs['y_valid']=Y\n", m_debug);
 		    }
 		    
@@ -427,7 +427,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		     * Push the test data. These will also be X and Y, so have a
 		     * script that renames these to X_test and y_test.
 		     */
-		    m_session.instancesToPythonAsScikietLearn(insts, "test", m_debug);
+		    m_session.instancesToPythonAsScikitLearn(insts, "test", m_debug);
 		    m_session.executeScript("args['X_test'] = X\n", m_debug);
 		    
 		    /*
