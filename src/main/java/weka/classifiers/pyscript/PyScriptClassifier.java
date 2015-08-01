@@ -366,6 +366,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		setShouldImpute( Utils.getFlag("im", options) );
 		setShouldBinarize( Utils.getFlag("bn", options) );
 		setShouldStandardize( Utils.getFlag("sd", options) );
+		
+		setUseValidationSet( Utils.getFlag("vs", options) );
 	}
 	
 	@Override
@@ -385,6 +387,9 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		}
 		if( getShouldStandardize() ) {
 			result.add("-sd");
+		}
+		if( getUseValidationSet() ) {
+			result.add("-vs");
 		}
 		
 		Collections.addAll(result, super.getOptions());
