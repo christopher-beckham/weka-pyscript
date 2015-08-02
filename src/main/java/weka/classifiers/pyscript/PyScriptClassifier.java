@@ -77,6 +77,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private int m_numClasses = 0;
 	private int m_numAttributes = 0;
 	private int m_numInstances = 0;
+	private String m_relationName = "";
 	private String m_className = null;
 	private String[] m_attrNames = null;
 	
@@ -153,6 +154,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    session.executeScript("args['num_classes'] = " + m_numClasses, m_debug);
 	    session.executeScript("args['num_attributes'] = " + m_numAttributes, m_debug);
 	    session.executeScript("args['num_instances'] = " + m_numInstances, m_debug);
+	    session.executeScript("args['relation_name'] = " + m_relationName, m_debug);
 	    
 	    // pass attribute information
 	    StringBuilder attrNames = new StringBuilder("args['attributes'] = [");
@@ -262,6 +264,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    m_numClasses = data.numClasses();
 		    m_numAttributes = data.numAttributes() - 1;
 		    m_numInstances = data.numInstances();
+		    m_relationName = data.relationName();
 		    m_className = data.classAttribute().name();
 		    m_attrNames = new String[ data.numAttributes() - 1 ];
 		    for(int i = 0; i < data.numAttributes()-1; i++) {
