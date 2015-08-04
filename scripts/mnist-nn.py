@@ -23,7 +23,7 @@ SEED = 0
 
 def lenet():
     # https://github.com/BVLC/caffe/blob/master/examples/mnist/lenet.prototxt
-    l_in = lasagne.layers.InputLayer( shape=(None, args["num_attributes"]) )
+    l_in = lasagne.layers.InputLayer( shape=(None, 1, 28, 28) )
     l_conv1 = lasagne.layers.Conv2DLayer(l_in, filter_size=(5,5), num_filters=20)
     l_pool1 = lasagne.layers.MaxPool2DLayer(l_conv1, pool_size=(2,2))
     l_conv2 = lasagne.layers.Conv2DLayer(l_pool1, filter_size=(5,5), num_filters=50)
@@ -36,20 +36,40 @@ def lenet():
     )
     l_out = lasagne.layers.DenseLayer(
         l_hidden,
-        num_units=args["num_classes"],
+        num_units=10,
         nonlinearity=lasagne.nonlinearities.softmax,
         W=lasagne.init.GlorotUniform()
     )
     return l_out
 
+def lenet_skinny():
+    # https://github.com/BVLC/caffe/blob/master/examples/mnist/lenet.prototxt
+    l_in = lasagne.layers.InputLayer( shape=(None, 1, 28, 28) )
+    l_conv1 = lasagne.layers.Conv2DLayer(l_in, filter_size=(5,5), num_filters=20/2)
+    l_pool1 = lasagne.layers.MaxPool2DLayer(l_conv1, pool_size=(2,2))
+    l_conv2 = lasagne.layers.Conv2DLayer(l_pool1, filter_size=(5,5), num_filters=50/2)
+    l_pool2 = lasagne.layers.MaxPool2DLayer(l_conv2, pool_size=(2,2))
+    l_hidden = lasagne.layers.DenseLayer(
+        l_pool2,
+        num_units=500/2,
+        nonlinearity=lasagne.nonlinearities.rectify,
+        W=lasagne.init.GlorotUniform()
+    )
+    l_out = lasagne.layers.DenseLayer(
+        l_hidden,
+        num_units=10,
+        nonlinearity=lasagne.nonlinearities.softmax,
+        W=lasagne.init.GlorotUniform()
+    )
+    return l_out
+
+
 def prepare():
 
-    print "aaaa"
-
-    X = T.fmatrix('X')
+    X = T.tensor4('X')
     y = T.ivector('y')
 
-    output_layer = lenet()
+    output_layer = lenet_skinny()
 
     all_params = lasagne.layers.get_all_params(output_layer)
 
@@ -78,6 +98,13 @@ def train(arg):
         pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
         f.close()
 
+    X_train = args["X_train"]
+    y_train = args["y_train"]
+
+    X_train = np.asarray(X_train, dtype="float32")
+    y_train = np.asarray(y_train.flatten(), dtype="int32")
+    X_train = X_train.reshape( (X_train.shape[0], 1, 28, 28) )
+
     symbols = prepare()
 
     alpha = args["alpha"]
@@ -96,12 +123,6 @@ def train(arg):
         [symbols.label_vector, symbols.pred, symbols.loss, symbols.accuracy],
         updates=updates
     )
-
-    args["X_train"] = np.asarray(args["X_train"], dtype="float32")
-    args["y_train"] = np.asarray(args["y_train"].flatten(), dtype="int32")
-
-    X_train = args["X_train"]
-    y_train = args["y_train"]
 
     sys.stderr.write(str(X_train.shape)+"\n")
     sys.stderr.write(str(y_train.shape)+"\n")
@@ -134,14 +155,10 @@ def train(arg):
             batch_train_losses.append(loss)
             batch_train_accuracies.append(acc)
 
-            batch_train_alt_losses.append( iter_alt_loss(X_train[b*bs : (b+1)*bs], y_train[b*bs : (b+1)*bs]) )
-
         sys.stderr.write( "  train_loss, train_accuracy = %f, %f\n" % \
             (np.mean(batch_train_losses), np.mean(batch_train_accuracies)) )
 
     best_weights = lasagne.layers.get_all_param_values(symbols.output_layer)
-
-    g.close()
 
     return best_weights
 

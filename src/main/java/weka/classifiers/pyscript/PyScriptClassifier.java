@@ -62,8 +62,6 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private boolean m_useValidationSet = DEFAULT_USE_VALIDATION_SET;
 	private int m_seed = DEFAULT_SEED;
 	
-	private boolean m_debug = false;
-	
 	private Filter m_nominalToBinary = null;
 	private Filter m_standardize = null;
 	private Filter m_replaceMissing = null;
@@ -151,10 +149,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		System.out.println("num classes = " + m_numClasses);
 		
 		// pass general information related to the training data
-	    session.executeScript("args['num_classes'] = " + m_numClasses, m_debug);
-	    session.executeScript("args['num_attributes'] = " + m_numAttributes, m_debug);
-	    session.executeScript("args['num_instances'] = " + m_numInstances, m_debug);
-	    session.executeScript("args['relation_name'] = " + m_relationName, m_debug);
+	    session.executeScript("args['num_classes'] = " + m_numClasses, getDebug());
+	    session.executeScript("args['num_attributes'] = " + m_numAttributes, getDebug());
+	    session.executeScript("args['num_instances'] = " + m_numInstances, getDebug());
+	    session.executeScript("args['relation_name'] = " +
+	    		"'" + m_relationName.replace("'", "") + "'", getDebug());
 	    
 	    // pass attribute information
 	    StringBuilder attrNames = new StringBuilder("args['attributes'] = [");
@@ -167,11 +166,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    	}
 	    }
 	    attrNames.append("]");
-	    session.executeScript( attrNames.toString(), m_debug);
+	    session.executeScript( attrNames.toString(), getDebug());
 	    
 	    // pass class name
 	    String classAttr = m_className.replace("'", "").replace("\"", "");
-	    session.executeScript( "args['class'] = '" + classAttr + "']", m_debug);    
+	    session.executeScript( "args['class'] = '" + classAttr.replace("'", "") + "'", getDebug());    
 	    
 	    String customParams = null;
 	    if(trainMode) {
@@ -184,7 +183,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    String[] extraParams = customParams.split(",");
 		    for(String param : extraParams) {
 		    	String[] paramSplit = param.split("=");
-		    	session.executeScript("args[" + paramSplit[0] + "] = " + paramSplit[1], m_debug);
+		    	session.executeScript("args[" + paramSplit[0] + "] = " + paramSplit[1], getDebug());
 		    }
 	    }
 	}
@@ -241,21 +240,21 @@ public class PyScriptClassifier extends AbstractClassifier implements
 				//;
 			}
 		    
-		    m_session.executeScript("args = dict()", m_debug);
+		    m_session.executeScript("args = dict()", getDebug());
 		    
 		    /*
 		     * Ok, push the training data to Python. The variables will be called
 		     * X and Y, so let's execute to script to rename these.
 		     */
-		    m_session.instancesToPythonAsScikitLearn(data, "train", m_debug);
-		    m_session.executeScript("args['X_train'] = X\nargs['y_train']=Y\n", m_debug);
+		    m_session.instancesToPythonAsScikitLearn(data, "train", false);
+		    m_session.executeScript("args['X_train'] = X\nargs['y_train']=Y\n", getDebug());
 		    
 		    /*
 		     * Push the validation data.
 		     */
 		    if( getUseValidationSet() ) {
-		    	m_session.instancesToPythonAsScikitLearn(validData, "valid", m_debug);
-		    	m_session.executeScript("args['X_valid'] = X\nargs['y_valid']=Y\n", m_debug);
+		    	m_session.instancesToPythonAsScikitLearn(validData, "valid", false);
+		    	m_session.executeScript("args['X_valid'] = X\nargs['y_valid']=Y\n", getDebug());
 		    }
 		    
 		    //System.out.format("train, valid = %s, %s\n",
@@ -279,15 +278,15 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    
 		    // build the classifier
 		    String driver = "best_weights = cls.train(args)";
-		    m_session.executeScript(driver, true);
+		    List<String> trainOutAndErr = m_session.executeScript(driver, getDebug());
 		    
 		    // save model parameters
-		    m_pickledModel = m_session.getVariableValueFromPythonAsPickledObject("best_weights", true);
+		    m_pickledModel = m_session.getVariableValueFromPythonAsPickledObject("best_weights", getDebug());
 		    
 		    // get model description
 		    driver = "model_desc = cls.describe(args, best_weights)";
-		    m_session.executeScript(driver, true);
-		    m_modelString = m_session.getVariableValueFromPythonAsPlainString("model_desc", m_debug);
+		    m_session.executeScript(driver, getDebug());
+		    m_modelString = m_session.getVariableValueFromPythonAsPlainString("model_desc", getDebug());
 		    System.out.println("Model string:" + m_modelString);
 		    
 		    //PythonSession.releaseSession(this);
@@ -315,7 +314,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private void initPythonSession() throws Exception {
 	    if (!PythonSession.pythonAvailable()) {
 	        // try initializing
-	        if (!PythonSession.initSession("python", m_debug)) {
+	        if (!PythonSession.initSession("python", getDebug())) {
 	          String envEvalResults = PythonSession.getPythonEnvCheckResults();
 	          throw new Exception("Was unable to start python environment: "
 	            + envEvalResults);
@@ -333,7 +332,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    	// now load training and testing class
 	    	String driver = "import imp\n"
 	    			+ "cls = imp.load_source('cls','" + getPythonFile() + "')\n";
-	    	m_session.executeScript(driver, m_debug);
+	    	m_session.executeScript(driver, getDebug());
     	}
 	    
 	}
@@ -355,6 +354,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	
 	@Override
 	public void setOptions(String[] options) throws Exception {
+		
 		String tmp = Utils.getOption("fn", options);
 		if(tmp.length() != 0) { 
 			setPythonFile(tmp);
@@ -371,6 +371,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		setShouldStandardize( Utils.getFlag("sd", options) );
 		
 		setUseValidationSet( Utils.getFlag("vs", options) );
+		
+		super.setOptions(options);
 	}
 	
 	@Override
@@ -428,33 +430,33 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	        insts = Filter.useFilter(insts, r);
 	        insts.setClassIndex(-1);
 		    
-		    m_session.executeScript("args = dict()", m_debug);
+		    m_session.executeScript("args = dict()", getDebug());
 		    pushArgs(m_session, false);	   
 		    
 		    /*
 		     * Push the test data. These will also be X and Y, so have a
 		     * script that renames these to X_test and y_test.
 		     */
-		    m_session.instancesToPythonAsScikitLearn(insts, "test", m_debug);
-		    m_session.executeScript("args['X_test'] = X\n", m_debug);
+		    m_session.instancesToPythonAsScikitLearn(insts, "test", false);
+		    m_session.executeScript("args['X_test'] = X\n", getDebug());
 		    
 		    /*
 		     * Push the weights of the saved model over.
 		     */
-		    m_session.setPythonPickledVariableValue("best_weights", m_pickledModel, true);
+		    m_session.setPythonPickledVariableValue("best_weights", m_pickledModel, getDebug());
 		    
 		    System.out.format("test = %s\n", insts.numInstances());	    
 		    
 		    String driver = "preds = cls.test(args, best_weights)";
 		    
-		    List<String> outAndErr = m_session.executeScript(driver, true);
+		    List<String> outAndErr = m_session.executeScript(driver, getDebug());
 		    System.out.println(outAndErr.get(0));
 		    
 		    
 		    //double[] distribution = new double[numClasses];
 		    
 			List<Object> preds = 
-		    	(List<Object>) m_session.getVariableValueFromPythonAsJson("preds", m_debug);
+		    	(List<Object>) m_session.getVariableValueFromPythonAsJson("preds", getDebug());
 
 			for(int y = 0; y < preds.size(); y++) {
 		    	Object vector = preds.get(y);
