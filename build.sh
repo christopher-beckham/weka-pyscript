@@ -1,5 +1,6 @@
 #!/bin/bash
 
+ant clean
 ant make_package -Dpackage=pyScript
 cd dist
 java weka.core.WekaPackageManager -install-package pyScript.zip
