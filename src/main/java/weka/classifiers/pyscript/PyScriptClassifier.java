@@ -100,6 +100,10 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_pythonCommand = s;
 	}
 	
+	public String argsDumpFileTipText() {
+		return "args dump";
+	}
+	
 	public String getArgsDumpFile() {
 		return m_argsDumpFile;
 	}
@@ -205,6 +209,42 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    }
 	    }
 	}
+	
+	/**
+	 * Write out the args object to a gzipped pickle
+	 * for debugging purposes.
+	 * @param trainMode if true, the filename will end in ".train.pkl.gz",
+	 * else ".test.pkl.gz"
+	 * @throws WekaException
+	 */
+	public void pickleArgs(boolean trainMode) throws WekaException {
+	    // if args dump is set, then save it out to file
+	    if( !getArgsDumpFile().equals("") ) {
+	    	// see if file exists, if it does then append a number to it
+	    	// e.g. if mnist.pkl.gz exists, then do mnist.pkl.gz.1
+	    	String currentFilename = getArgsDumpFile();
+	    	if(trainMode) {
+	    		currentFilename += ".train";
+	    	} else {
+	    		currentFilename += ".test";
+	    	}
+	    	
+	    	int idx = 0;
+	    	while(true) {
+	    		if( new File(currentFilename).exists() ) {
+	    			currentFilename += ( "." + idx );
+	    		} else {
+	    			break;
+	    		}
+	    	}
+	    	StringBuilder sb = new StringBuilder();
+	    	sb.append("import gzip\nimport cPickle as pickle\n");
+	    	sb.append("_g = gzip.open('" + currentFilename + "', 'wb')\n");
+	    	sb.append("pickle.dump(args, _g, pickle.HIGHEST_PROTOCOL)\n");
+	    	sb.append("_g.close()\n");
+	    	m_session.executeScript(sb.toString(), getDebug());
+	    }
+	}
 
 	@Override
 	public void buildClassifier(Instances data) {
@@ -290,26 +330,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	
 		    pushArgs(m_session, true);
 		    
-		    // if args dump is set, then save it out to file
-		    if( !getArgsDumpFile().equals("") ) {
-		    	// see if file exists, if it does then append a number to it
-		    	// e.g. if mnist.pkl.gz exists, then do mnist.pkl.gz.1
-		    	String currentFilename = getArgsDumpFile();
-		    	int idx = 0;
-		    	while(true) {
-		    		if( new File(currentFilename).exists() ) {
-		    			currentFilename += ( "." + idx );
-		    		} else {
-		    			break;
-		    		}
-		    	}
-		    	StringBuilder sb = new StringBuilder();
-		    	sb.append("import gzip\nimport cPickle as pickle\n");
-		    	sb.append("_g = gzip.open('" + currentFilename + "', 'wb')\n");
-		    	sb.append("pickle.dump(args, _g, pickle.HIGHEST_PROTOCOL)\n");
-		    	sb.append("_g.close()\n");
-		    	m_session.executeScript(sb.toString(), getDebug());
-		    }
+		    pickleArgs(true);
 		    
 		    //System.out.println("Number of classes: " + m_numClasses);
 		    //System.out.println("Number of attributes: " + m_numAttributes);
@@ -384,6 +405,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	@SuppressWarnings("unchecked")
 	public double[] distributionForInstance(Instance inst)
 			throws Exception {
+		
+		System.out.println("distributionForInstance");
 		
 		Instances insts = new Instances(inst.dataset());
 		
@@ -491,7 +514,9 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	        insts.setClassIndex(-1);
 		    
 		    m_session.executeScript("args = dict()", getDebug());
-		    pushArgs(m_session, false);	   
+		    pushArgs(m_session, false);
+		    
+		    pickleArgs(false);
 		    
 		    /*
 		     * Push the test data. These will also be X and Y, so have a
