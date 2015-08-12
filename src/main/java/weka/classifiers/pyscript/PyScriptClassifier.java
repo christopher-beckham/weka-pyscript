@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Vector;
 
@@ -15,6 +16,8 @@ import weka.core.BatchPredictor;
 import weka.core.CapabilitiesHandler;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.Option;
+import weka.core.OptionHandler;
 import weka.core.Randomizable;
 import weka.core.TechnicalInformation;
 import weka.core.TechnicalInformation.Field;
@@ -38,7 +41,7 @@ import weka.python.PythonSession;
  *
  */
 public class PyScriptClassifier extends AbstractClassifier implements
-	  BatchPredictor, CapabilitiesHandler, Randomizable, TechnicalInformationHandler {
+	  BatchPredictor, CapabilitiesHandler, Randomizable, TechnicalInformationHandler, OptionHandler {
 	
 	private static final long serialVersionUID = 2846535265976949760L;
 	
@@ -222,17 +225,19 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    if( !getArgsDumpFile().equals("") ) {
 	    	// see if file exists, if it does then append a number to it
 	    	// e.g. if mnist.pkl.gz exists, then do mnist.pkl.gz.1
-	    	String currentFilename = getArgsDumpFile();
+	    	String currentFilenameTemplate = getArgsDumpFile();
 	    	if(trainMode) {
-	    		currentFilename += ".train";
+	    		currentFilenameTemplate += ".train";
 	    	} else {
-	    		currentFilename += ".test";
+	    		currentFilenameTemplate += ".test";
 	    	}
 	    	
+	    	String currentFilename = currentFilenameTemplate;
 	    	int idx = 0;
 	    	while(true) {
 	    		if( new File(currentFilename).exists() ) {
-	    			currentFilename += ( "." + idx );
+	    			currentFilename = currentFilenameTemplate + "." + idx;
+	    			idx += 1;
 	    		} else {
 	    			break;
 	    		}
@@ -588,6 +593,37 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		result.setValue(Field.AUTHOR, "C. Beckham");
 		result.setValue(Field.TITLE, "A simple approach to create Python classifiers for WEKA" );
 		return result;
+	}
+	
+	@Override
+	public Enumeration<Option> listOptions() {
+		Vector<Option> newVector = new Vector<Option>();
+		newVector.addElement(
+			new Option("\tPython script", "pythonFile", 1, "-fn <filename>")
+		);
+		newVector.addElement(
+			new Option("\tTraining arguments", "trainPythonFileParams", 1, "-xp <string>")
+		);
+		newVector.addElement(
+			new Option("\tTesting arguments", "testPythonFileParams", 1, "-yp <string>")
+		);
+		newVector.addElement(
+			new Option("\tShould we binarise nominal attributes?", "shouldBinarize", 0, "-bn")
+		);
+		newVector.addElement(
+			new Option("\tShould we impute missing values with mean?", "shouldImpute", 0, "-im")
+		);
+		newVector.addElement(
+			new Option("\tShould we standardize the attributes?", "shouldStandardize", 0, "-sd")
+		);
+		newVector.addElement(
+			new Option("\tSet aside 25% of training data as validation data?", "useValidationSet", 0, "-vs")
+		);
+		newVector.addElement(
+			new Option("\tSpecify a filename to dump pickled ARFF to (for debugging purposes)", "argsDumpFile", 1, "-df <filename>")
+		);
+		newVector.addAll(Collections.list(super.listOptions()));
+		return newVector.elements();
 	}
 	
 	public static void main(String[] argv) {
