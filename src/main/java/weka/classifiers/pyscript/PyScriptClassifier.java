@@ -5,8 +5,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Vector;
 
@@ -72,6 +74,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private Filter m_nominalToBinary = null;
 	private Filter m_standardize = null;
 	private Filter m_replaceMissing = null;
+	private HashMap<String, ArrayList<String>> m_attrEnums = null;
 	
 	private String m_pickledModel = null;
 	
@@ -193,17 +196,31 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    attrNames.append("]");
 	    session.executeScript( attrNames.toString(), getDebug());
 	    
+	    // pass attribute enums
+	    StringBuilder attrValues = new StringBuilder("args['attr_values'] = dict()\n");
+	    for(String key : m_attrEnums.keySet()) {
+	    	StringBuilder vector = new StringBuilder();
+	    	vector.append("[");
+	    	ArrayList<String> vals = m_attrEnums.get(key);
+	    	for(String val : vals) {
+	    		vector.append( "'" + val + "'" + "," );
+	    	}
+	    	vector.append("]");
+	    	attrValues.append("args['attr_values']['" + key + "'] = " + vector.toString());
+	    }
+	    session.executeScript(attrValues.toString(), getDebug());
+	    
 	    // pass class name
 	    String classAttr = m_className.replace("'", "").replace("\"", "");
 	    session.executeScript( "args['class'] = '" + classAttr.replace("'", "") + "'", getDebug());    
 	    
+	    // pass custom parameters from -xp or -yp
 	    String customParams = null;
 	    if(trainMode) {
 	    	customParams = getTrainPythonFileParams();
 	    } else {
 	    	customParams = getTestPythonFileParams();
 	    }
-	    // pass custom parameters from -xp or -yp
 	    if( !customParams.equals("") ) {
 		    String[] extraParams = customParams.split(",");
 		    for(String param : extraParams) {
@@ -329,8 +346,18 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    m_relationName = data.relationName();
 		    m_className = data.classAttribute().name();
 		    m_attrNames = new String[ data.numAttributes() - 1 ];
+		    m_attrEnums = new HashMap<String, ArrayList<String> >();
 		    for(int i = 0; i < data.numAttributes()-1; i++) {
 		    	m_attrNames[i] = data.attribute(i).name();
+		    	
+		    	if( data.attribute(i).isNominal() || data.attribute(i).isString() ) {
+			    	Enumeration<Object> en = data.attribute(i).enumerateValues();
+			    	ArrayList<String> strs = new ArrayList<String>(data.attribute(i).numValues());
+			    	while(en.hasMoreElements()) {
+			    		strs.add( (String) en.nextElement() );
+			    	}    	
+			    	m_attrEnums.put(m_attrNames[i], strs);
+		    	}
 		    }
 	
 		    pushArgs(m_session, true);

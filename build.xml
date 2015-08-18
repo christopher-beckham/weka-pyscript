@@ -201,7 +201,8 @@
     <mkdir dir="${dist}/${package}/datasets" />
     <copy todir="${dist}/${package}/datasets" >
       <fileset dir="datasets">
-        <include name="*.arff" />
+        <include name="iris.arff" />
+        <include name="diabetes_numeric.arff" />
       </fileset>
     </copy>
 
