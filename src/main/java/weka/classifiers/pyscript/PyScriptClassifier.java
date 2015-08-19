@@ -206,7 +206,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    		vector.append( "'" + val + "'" + "," );
 	    	}
 	    	vector.append("]");
-	    	attrValues.append("args['attr_values']['" + key + "'] = " + vector.toString());
+	    	attrValues.append("args['attr_values']['" + 
+	    		key.replace("'", "\\'").replace("\n", "\\n") + "'] = " + vector.toString() );
 	    }
 	    session.executeScript(attrValues.toString(), getDebug());
 	    
