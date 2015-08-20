@@ -25,14 +25,16 @@ public class Utility {
 	public static void pushArgs(Instances df, String customParams,
 			PythonSession session, boolean debug) throws Exception {
 		
+		StringBuilder script = new StringBuilder();
+		
 		// pass general information related to the training data
 		if(df.classIndex() != -1) {
-			session.executeScript("args['num_classes'] = " + df.numClasses(), debug);
+			script.append("args['num_classes'] = " + df.numClasses() + "\n");
 		}
-		session.executeScript("args['num_attributes'] = " + df.numAttributes(), debug);
-		session.executeScript("args['num_instances'] = " + df.numInstances(), debug);
-		session.executeScript("args['relation_name'] = " +
-	    		"'" + df.relationName().replace("'", "") + "'", debug);
+		script.append("args['num_attributes'] = " + df.numAttributes() + "\n");
+		script.append("args['num_instances'] = " + df.numInstances() + "\n");
+		script.append("args['relation_name'] = " +
+	    		"'" + df.relationName().replace("'", "") + "'" + "\n");
 	    
 	    // pass attribute information
 	    StringBuilder attrNames = new StringBuilder("args['attributes'] = [");
@@ -44,11 +46,11 @@ public class Utility {
 	    		attrNames.append(",");
 	    	}
 	    }
-	    attrNames.append("]");
-	    session.executeScript( attrNames.toString(), debug);
+	    attrNames.append("]\n");
+	    script.append(attrNames.toString());
 	    
 	    HashMap<String, ArrayList<String>> m_attrEnums = new HashMap<String, ArrayList<String> >();
-	    for(int i = 0; i < df.numAttributes()-1; i++) {
+	    for(int i = 0; i < df.numAttributes(); i++) {
 	    	if( df.attribute(i).isNominal() || df.attribute(i).isString() ) {
 		    	Enumeration<Object> en = df.attribute(i).enumerateValues();
 		    	ArrayList<String> strs = new ArrayList<String>(df.attribute(i).numValues());
@@ -70,14 +72,15 @@ public class Utility {
 	    	}
 	    	vector.append("]");
 	    	attrValues.append("args['attr_values']['" + 
-	    		key.replace("'", "\\'").replace("\n", "\\n") + "'] = " + vector.toString() );
+	    		key.replace("'", "\\'").replace("\n", "\\n") + "'] = " + vector.toString() + "\n" );
 	    }
-	    session.executeScript(attrValues.toString(), debug);
+	    //session.executeScript(attrValues.toString(), debug);
+	    script.append(attrValues.toString());
 	    
 	    // pass class name
 	    if(df.classIndex() != -1) {
 	    	String classAttr = df.classAttribute().name().replace("'", "").replace("\"", "");
-	    	session.executeScript( "args['class'] = '" + classAttr.replace("'", "") + "'", debug);
+	    	script.append( "args['class'] = '" + classAttr.replace("'", "") + "'\n");
 	    }
 	    
 	    // pass custom parameters from -xp or -yp
@@ -93,9 +96,11 @@ public class Utility {
 		    String[] extraParams = customParams.split(",");
 		    for(String param : extraParams) {
 		    	String[] paramSplit = param.split("=");
-		    	session.executeScript("args[" + paramSplit[0] + "] = " + paramSplit[1], debug);
+		    	script.append("args[" + paramSplit[0] + "] = " + paramSplit[1]);
 		    }
 	    }
+	    
+	    session.executeScript(script.toString(), debug);
 	    
 	}
 
