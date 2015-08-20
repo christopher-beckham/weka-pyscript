@@ -1,21 +1,24 @@
 package weka.pyscript;
 
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashMap;
-
+import weka.core.CommandlineRunnable;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.python.PythonSession;
 
-class ArffToPickleSession {
+class ArffToPickle implements CommandlineRunnable {
+	
+	private PythonSession m_session = null;
+	private boolean m_debug = true;
 	
 	private String m_filename = null;
-	private PythonSession m_session = null;
-	private boolean m_debug = false;
+	private String m_dest = null;
 	
-	public ArffToPickleSession(String filename) {
-		m_filename = filename;
+	public void setFilename(String s) {
+		m_filename = s;
+	}
+	
+	public void setDest(String s) {
+		m_dest = s;
 	}
 	
 	public void initPythonSession() throws Exception {
@@ -32,35 +35,40 @@ class ArffToPickleSession {
 		PythonSession.releaseSession(this);
 	}
 	
-	public void test() throws Exception {
-		if(m_session == null) {
-			m_session = PythonSession.acquireSession(this);
+	public void test() {
+		try {
+			initPythonSession();
+			if(m_session == null) {
+				m_session = PythonSession.acquireSession(this);
+			}			
+			DataSource ds = new DataSource(m_filename);
+			Instances instances = ds.getDataSet();
+			m_session.executeScript("args = dict()", m_debug);
+			Utility.pushArgs(instances, "", m_session, m_debug);
+			
+	    	StringBuilder sb = new StringBuilder();
+	    	sb.append("import gzip\nimport cPickle as pickle\n");
+	    	sb.append("_g = gzip.open('" + m_dest.replace("'","\\'") + "', 'wb')\n");
+	    	sb.append("pickle.dump(args, _g, pickle.HIGHEST_PROTOCOL)\n");
+	    	sb.append("_g.close()\n");
+	    	m_session.executeScript(sb.toString(), m_debug);			
+		} catch(Exception ex) {
+			ex.printStackTrace();
+		} finally {
+			closePythonSession();
 		}
-		DataSource ds = new DataSource(m_filename);
-		Instances instances = ds.getDataSet();
-		m_session.instancesToPython(instances, "df", true);
-	}
-	
-}
-
-/**
- * Convert an .arff file into a .pkl.gz to be able
- * to test Python scripts on .arff files without needing
- * WEKA
- * @author cjb60
- *
- */
-public class ArffToPickle {
-	
-	public static void main(String[] args) throws Exception {
-		
-		ArffToPickleSession session = new 
-				ArffToPickleSession("/Users/cjb60/Desktop/weka/datasets/UCI/iris.arff");
-		
-		//session.initPythonSession();
-		
-		//session.closePythonSession();
-		
 	}
 
+	@Override
+	public void run(Object toRun, String[] options)
+			throws IllegalArgumentException {
+		((ArffToPickle)toRun).setFilename(options[0]);
+		((ArffToPickle)toRun).setDest(options[1]);
+		((ArffToPickle)toRun).test();
+	}
+	
+	//public static void main(String[] args) {
+	//	ArffToPickle x = new ArffToPickle();
+	//	x.run(x, args);
+	//}
 }
