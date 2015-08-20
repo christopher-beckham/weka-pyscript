@@ -216,7 +216,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	}
 
 	@Override
-	public void buildClassifier(Instances data) {
+	public void buildClassifier(Instances data) throws Exception {
 		
 		try {
 		
@@ -263,11 +263,9 @@ public class PyScriptClassifier extends AbstractClassifier implements
 			    // this time, don't invert the selection
 			    stratifiedFolds.setOptions( new String[] {"-S",""+getSeed(),  "-N","4",  "-F","1" } );
 			    validData = Filter.useFilter(data, stratifiedFolds);
-			} else {
-				//;
 			}
-		    
-		    m_session.executeScript("args = dict()", getDebug());
+			
+			Utility.pushArgs(data, getTrainPythonFileParams(), m_session, true);
 		    
 		    /*
 		     * Ok, push the training data to Python. The variables will be called
@@ -282,33 +280,28 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    if( getUseValidationSet() ) {
 		    	m_session.instancesToPythonAsScikitLearn(validData, "valid", false);
 		    	m_session.executeScript("args['X_valid'] = X\nargs['y_valid']=Y\n", getDebug());
-		    }
-		    
-		    //System.out.format("train, valid = %s, %s\n",
-		    //		m_trainingData.numInstances(), m_validData.numInstances());
-	
-		    Utility.pushArgs(data, getTrainPythonFileParams(), m_session, true);
+		    }	    
 		    
 		    pickleArgs(true);
 		    
-		    //System.out.println("Number of classes: " + m_numClasses);
-		    //System.out.println("Number of attributes: " + m_numAttributes);
-		    //System.out.println("Number of instances: " + m_numInstances);
-		    
 		    // build the classifier
-		    String driver = "best_weights = cls.train(args)";
-		    List<String> trainOutAndErr = m_session.executeScript(driver, getDebug());
+		    String driver = "model = cls.train(args)";
+		    List<String> out = m_session.executeScript(driver, getDebug());
+		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+		    	throw new Exception( "An error happened while executing the train() function:\n" + out.get(1) );
+		    }
 		    
 		    // save model parameters
-		    m_pickledModel = m_session.getVariableValueFromPythonAsPickledObject("best_weights", getDebug());
+		    m_pickledModel = m_session.getVariableValueFromPythonAsPickledObject("model", getDebug());
 		    
 		    // get model description
-		    driver = "model_desc = cls.describe(args, best_weights)";
+		    driver = "model_description = cls.describe(args, model)";
 		    m_session.executeScript(driver, getDebug());
-		    m_modelString = m_session.getVariableValueFromPythonAsPlainString("model_desc", getDebug());
-		    //System.out.println("Model string:" + m_modelString);
+		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+		    	throw new Exception( "An error happened while executing the describe() function:\n" + out.get(1) );
+		    }
 		    
-		    //PythonSession.releaseSession(this);
+		    m_modelString = m_session.getVariableValueFromPythonAsPlainString("model_description", getDebug());
 	    
 		} catch(Exception ex) {
 			ex.printStackTrace();
@@ -319,14 +312,10 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	}
 
 	@Override
-	public void setBatchSize(String size) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void setBatchSize(String size) { }
 
 	@Override
 	public String getBatchSize() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 	
@@ -472,7 +461,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	        insts = Filter.useFilter(insts, r);
 	        insts.setClassIndex(-1);
 		    
-		    m_session.executeScript("args = dict()", getDebug());
+		    //m_session.executeScript("args = dict()", getDebug());
 		    Utility.pushArgs(insts, getTestPythonFileParams(), m_session, false);
 		    
 		    pickleArgs(false);

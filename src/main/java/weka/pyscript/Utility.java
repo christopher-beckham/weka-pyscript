@@ -3,6 +3,7 @@ package weka.pyscript;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 
 import weka.core.Instances;
 import weka.python.PythonSession;
@@ -14,18 +15,22 @@ import weka.python.PythonSession;
  */
 public class Utility {
 	
+	public static final String TRACEBACK_MSG = "Traceback (most recent call last):";
+	
 	/**
 	 * Push an args variable to the specified Python
 	 * session.
 	 * @param df data frame
 	 * @param session the Python session to send args to
 	 * @param debug print debug information?
-	 * @throws Exception
+	 * @throws Exception if an error traceback has been detected in stderr
 	 */
 	public static void pushArgs(Instances df, String customParams,
 			PythonSession session, boolean debug) throws Exception {
 		
 		StringBuilder script = new StringBuilder();
+		
+		script.append("args = dict()\n");
 		
 		// pass general information related to the training data
 		if(df.classIndex() != -1) {
@@ -100,7 +105,10 @@ public class Utility {
 		    }
 	    }
 	    
-	    session.executeScript(script.toString(), debug);
+	    List<String> out = session.executeScript(script.toString(), debug);
+	    if(out.get(1).contains(TRACEBACK_MSG)) {
+	    	throw new Exception( out.get(1) );
+	    }
 	    
 	}
 
