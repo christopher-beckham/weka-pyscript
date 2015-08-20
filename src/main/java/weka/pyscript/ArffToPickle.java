@@ -1,5 +1,9 @@
 package weka.pyscript;
 
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashMap;
+
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.python.PythonSession;
@@ -8,6 +12,7 @@ class ArffToPickleSession {
 	
 	private String m_filename = null;
 	private PythonSession m_session = null;
+	private boolean m_debug = false;
 	
 	public ArffToPickleSession(String filename) {
 		m_filename = filename;
@@ -34,8 +39,8 @@ class ArffToPickleSession {
 		DataSource ds = new DataSource(m_filename);
 		Instances instances = ds.getDataSet();
 		m_session.instancesToPython(instances, "df", true);
-		
 	}
+	
 }
 
 /**

@@ -33,6 +33,7 @@ import weka.filters.unsupervised.attribute.NominalToBinary;
 import weka.filters.unsupervised.attribute.Remove;
 import weka.filters.unsupervised.attribute.ReplaceMissingValues;
 import weka.filters.unsupervised.attribute.Standardize;
+import weka.pyscript.Utility;
 import weka.python.PythonSession;
 
 /**
@@ -82,12 +83,14 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	
 	private String m_modelString = null;
 	
+	/*
 	private int m_numClasses = 0;
 	private int m_numAttributes = 0;
 	private int m_numInstances = 0;
 	private String m_relationName = "";
 	private String m_className = null;
 	private String[] m_attrNames = null;
+	*/
 	
 	/** The default Python script to execute */
 	private String m_pyTrainFile = DEFAULT_PYFILE;
@@ -172,63 +175,6 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	
 	public void setUseValidationSet(boolean b) {
 		m_useValidationSet = b;
-	}
-	
-	private void pushArgs(PythonSession session, boolean trainMode) throws Exception {
-		
-		// pass general information related to the training data
-	    session.executeScript("args['num_classes'] = " + m_numClasses, getDebug());
-	    session.executeScript("args['num_attributes'] = " + m_numAttributes, getDebug());
-	    session.executeScript("args['num_instances'] = " + m_numInstances, getDebug());
-	    session.executeScript("args['relation_name'] = " +
-	    		"'" + m_relationName.replace("'", "") + "'", getDebug());
-	    
-	    // pass attribute information
-	    StringBuilder attrNames = new StringBuilder("args['attributes'] = [");
-	    for(int i = 0; i < m_numAttributes; i++) {
-	    	String attrName = m_attrNames[i];
-	    	attrName = attrName.replace("'", "").replace("\"", "");
-	    	attrNames.append( "'" + attrName + "'" );
-	    	if(i != m_numAttributes-1) {
-	    		attrNames.append(",");
-	    	}
-	    }
-	    attrNames.append("]");
-	    session.executeScript( attrNames.toString(), getDebug());
-	    
-	    // pass attribute enums
-	    StringBuilder attrValues = new StringBuilder("args['attr_values'] = dict()\n");
-	    for(String key : m_attrEnums.keySet()) {
-	    	StringBuilder vector = new StringBuilder();
-	    	vector.append("[");
-	    	ArrayList<String> vals = m_attrEnums.get(key);
-	    	for(String val : vals) {
-	    		vector.append( "'" + val + "'" + "," );
-	    	}
-	    	vector.append("]");
-	    	attrValues.append("args['attr_values']['" + 
-	    		key.replace("'", "\\'").replace("\n", "\\n") + "'] = " + vector.toString() );
-	    }
-	    session.executeScript(attrValues.toString(), getDebug());
-	    
-	    // pass class name
-	    String classAttr = m_className.replace("'", "").replace("\"", "");
-	    session.executeScript( "args['class'] = '" + classAttr.replace("'", "") + "'", getDebug());    
-	    
-	    // pass custom parameters from -xp or -yp
-	    String customParams = null;
-	    if(trainMode) {
-	    	customParams = getTrainPythonFileParams();
-	    } else {
-	    	customParams = getTestPythonFileParams();
-	    }
-	    if( !customParams.equals("") ) {
-		    String[] extraParams = customParams.split(",");
-		    for(String param : extraParams) {
-		    	String[] paramSplit = param.split("=");
-		    	session.executeScript("args[" + paramSplit[0] + "] = " + paramSplit[1], getDebug());
-		    }
-	    }
 	}
 	
 	/**
@@ -340,28 +286,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    
 		    //System.out.format("train, valid = %s, %s\n",
 		    //		m_trainingData.numInstances(), m_validData.numInstances());
-		    
-		    m_numClasses = data.numClasses();
-		    m_numAttributes = data.numAttributes() - 1;
-		    m_numInstances = data.numInstances();
-		    m_relationName = data.relationName();
-		    m_className = data.classAttribute().name();
-		    m_attrNames = new String[ data.numAttributes() - 1 ];
-		    m_attrEnums = new HashMap<String, ArrayList<String> >();
-		    for(int i = 0; i < data.numAttributes()-1; i++) {
-		    	m_attrNames[i] = data.attribute(i).name();
-		    	
-		    	if( data.attribute(i).isNominal() || data.attribute(i).isString() ) {
-			    	Enumeration<Object> en = data.attribute(i).enumerateValues();
-			    	ArrayList<String> strs = new ArrayList<String>(data.attribute(i).numValues());
-			    	while(en.hasMoreElements()) {
-			    		strs.add( (String) en.nextElement() );
-			    	}    	
-			    	m_attrEnums.put(m_attrNames[i], strs);
-		    	}
-		    }
 	
-		    pushArgs(m_session, true);
+		    Utility.pushArgs(data, getTrainPythonFileParams(), m_session, true);
 		    
 		    pickleArgs(true);
 		    
@@ -547,7 +473,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	        insts.setClassIndex(-1);
 		    
 		    m_session.executeScript("args = dict()", getDebug());
-		    pushArgs(m_session, false);
+		    Utility.pushArgs(insts, getTestPythonFileParams(), m_session, false);
 		    
 		    pickleArgs(false);
 		    
