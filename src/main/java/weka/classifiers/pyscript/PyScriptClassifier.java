@@ -75,7 +75,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private Filter m_nominalToBinary = null;
 	private Filter m_standardize = null;
 	private Filter m_replaceMissing = null;
-	private HashMap<String, ArrayList<String>> m_attrEnums = null;
+	private String m_batchSize = "100";
 	
 	private String m_pickledModel = null;
 	
@@ -312,11 +312,13 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	}
 
 	@Override
-	public void setBatchSize(String size) { }
+	public void setBatchSize(String size) {
+		m_batchSize = size;
+	}
 
 	@Override
 	public String getBatchSize() {
-		return null;
+		return m_batchSize;
 	}
 	
 	private void initPythonSession() throws Exception {
@@ -326,23 +328,16 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	          String envEvalResults = PythonSession.getPythonEnvCheckResults();
 	          throw new Exception("Was unable to start python environment: "
 	            + envEvalResults);
-	        } else {
-	        	// success
 	        }
 	    }
-    	
-    	// success!
     	if(m_session == null) {
-    		m_session = PythonSession.acquireSession(this);
-    		
-    		//System.err.println("This should only run once per x-val");
-    	
+    		m_session = PythonSession.acquireSession(this);  		
+    		System.out.println("is null?" + (m_session==null));  	
 	    	// now load training and testing class
 	    	String driver = "import imp\n"
 	    			+ "cls = imp.load_source('cls','" + getPythonFile() + "')\n";
 	    	m_session.executeScript(driver, getDebug());
-    	}
-	    
+    	}    
 	}
 	
 	private void closePythonSession() {
@@ -356,11 +351,13 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		
 		System.out.println("distributionForInstance");
 		
-		Instances insts = new Instances(inst.dataset());
+		Instances insts = new Instances(inst.dataset(), 0);
+	    insts.add(inst);
 		
 		return distributionsForInstances(insts)[0];
 		
 	}
+	
 	
 	@Override
 	public void setOptions(String[] options) throws Exception {
@@ -389,6 +386,9 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		
 		tmp = Utils.getOption("df", options);
 		setArgsDumpFile(tmp);
+		
+		tmp = Utils.getOption("-batch", options);
+		setBatchSize(tmp);
 		
 		super.setOptions(options);
 	}
@@ -427,7 +427,10 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		if( !getArgsDumpFile().equals("") ) {
 			result.add("-df");
 			result.add( "" + getArgsDumpFile() );
-		}		
+		}
+		result.add("-batch");
+		result.add( getBatchSize() );
+		
 		Collections.addAll(result, super.getOptions());
 	    return result.toArray(new String[result.size()]);
 	}
@@ -435,6 +438,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	@Override
 	public double[][] distributionsForInstances(Instances insts)
 			throws Exception {
+		
+		System.out.format("test = %s\n", insts.numInstances());
 		
 		double[][] dists = new double[insts.numInstances()][insts.numClasses()];
 		
@@ -477,8 +482,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		     * Push the weights of the saved model over.
 		     */
 		    m_session.setPythonPickledVariableValue("best_weights", m_pickledModel, getDebug());
-		    
-		    System.out.format("test = %s\n", insts.numInstances());	    
+		     
 		    
 		    String driver = "preds = cls.test(args, best_weights)";
 		    

@@ -44,7 +44,7 @@ def describe(args, weights):
     coefs = weights[0].flatten()
     intercept = weights[1]
     st = "f(x) = \n"
-    for i in range(0, len(args["attributes"])):
+    for i in range(0, args["num_attributes"]):
         st += "  " + args["attributes"][i] + "*" + str(coefs[i]) + " +\n"
     st += "  " + str(intercept)
     return st

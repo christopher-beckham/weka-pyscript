@@ -36,7 +36,7 @@ public class Utility {
 		if(df.classIndex() != -1) {
 			script.append("args['num_classes'] = " + df.numClasses() + "\n");
 		}
-		script.append("args['num_attributes'] = " + df.numAttributes() + "\n");
+		script.append("args['num_attributes'] = " + (df.numAttributes()-1) + "\n");
 		script.append("args['num_instances'] = " + df.numInstances() + "\n");
 		script.append("args['relation_name'] = " +
 	    		"'" + df.relationName().replace("'", "") + "'" + "\n");
@@ -101,7 +101,7 @@ public class Utility {
 		    String[] extraParams = customParams.split(",");
 		    for(String param : extraParams) {
 		    	String[] paramSplit = param.split("=");
-		    	script.append("args[" + paramSplit[0] + "] = " + paramSplit[1]);
+		    	script.append("args[" + paramSplit[0] + "] = " + paramSplit[1] + "\n");
 		    }
 	    }
 	    
