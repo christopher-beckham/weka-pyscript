@@ -75,7 +75,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private Filter m_nominalToBinary = null;
 	private Filter m_standardize = null;
 	private Filter m_replaceMissing = null;
-	private String m_batchSize = "100";
+	
+	protected String m_batchPredictSize = "100";
 	
 	private String m_pickledModel = null;
 	
@@ -313,12 +314,12 @@ public class PyScriptClassifier extends AbstractClassifier implements
 
 	@Override
 	public void setBatchSize(String size) {
-		m_batchSize = size;
+		m_batchPredictSize = size;
 	}
 
 	@Override
 	public String getBatchSize() {
-		return m_batchSize;
+		return m_batchPredictSize;
 	}
 	
 	private void initPythonSession() throws Exception {
@@ -356,8 +357,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		
 		return distributionsForInstances(insts)[0];
 		
-	}
-	
+	}	
 	
 	@Override
 	public void setOptions(String[] options) throws Exception {
@@ -440,6 +440,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 			throws Exception {
 		
 		System.out.format("test = %s\n", insts.numInstances());
+		System.out.format("batch size = %s\n", getBatchSize());
 		
 		double[][] dists = new double[insts.numInstances()][insts.numClasses()];
 		
