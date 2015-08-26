@@ -6,6 +6,10 @@ import java.util.HashMap;
 import java.util.List;
 
 import weka.core.Instances;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.NominalToBinary;
+import weka.filters.unsupervised.attribute.ReplaceMissingValues;
+import weka.filters.unsupervised.attribute.Standardize;
 import weka.python.PythonSession;
 
 /**
@@ -16,6 +20,65 @@ import weka.python.PythonSession;
 public class Utility {
 	
 	public static final String TRACEBACK_MSG = "Traceback (most recent call last):";
+	
+	/**
+	 * Start up a Python session
+	 * @param the requesting object
+	 * @param pythonCommand the Python command
+	 * @param debug print debug information?
+	 * @return a Python session
+	 * @throws Exception if unable to start Python environment
+	 */
+	public static PythonSession initPythonSession(Object requester, String pythonCommand, boolean debug)
+			throws Exception {
+	    if (!PythonSession.pythonAvailable()) {
+	        // try initializing
+	        if (!PythonSession.initSession( pythonCommand, debug)) {
+	          String envEvalResults = PythonSession.getPythonEnvCheckResults();
+	          throw new Exception("Was unable to start python environment: "
+	            + envEvalResults);
+	        }
+	    }
+		PythonSession session = PythonSession.acquireSession(requester);  		
+		return session;
+	}
+	
+	/**
+	 * Release Python session
+	 * @param requester the requesting object
+	 */
+	public static void closePythonSession(Object requester) {
+		PythonSession.releaseSession(requester);
+	}
+	
+	/**
+	 * 
+	 * @param data the data to transform
+	 * @param shouldImpute impute the data?
+	 * @param shouldStandardize standardize the numeric attributes?
+	 * @param shouldBinarize binarize the attributes?
+	 * @return the transformed data
+	 * @throws Exception
+	 */
+	public static Instances preProcessData(Instances data, boolean shouldImpute, 
+			boolean shouldBinarize, boolean shouldStandardize) throws Exception {
+	    if( shouldImpute ) {
+	    	Filter replaceMissing = new ReplaceMissingValues();
+			replaceMissing.setInputFormat(data);
+			data = Filter.useFilter(data, replaceMissing);
+	    }
+		if( shouldBinarize ) {
+			Filter nominalToBinary = new NominalToBinary();
+	    	nominalToBinary.setInputFormat(data);
+	    	data = Filter.useFilter(data, nominalToBinary);
+		}
+		if( shouldStandardize ) {
+			Filter standardize = new Standardize();
+			standardize.setInputFormat(data);
+			data = Filter.useFilter(data, standardize);
+		}
+		return data;
+	}
 	
 	/**
 	 * Push an args variable to the specified Python

@@ -1,7 +1,8 @@
-package weka.core;
+package weka.pyscript;
 
 import weka.core.CommandlineRunnable;
 import weka.core.Instances;
+import weka.core.Utils;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.pyscript.Utility;
 import weka.python.PythonSession;
@@ -13,6 +14,9 @@ import weka.python.PythonSession;
  */
 public class ArffToPickle implements CommandlineRunnable {
 	
+	private static final String USAGE = "Usage: -i <arff file> -o <destination file> -c <class index> "
+			+ "[-impute] [-binarize] [-standardize] [-debug]";
+	
 	private PythonSession m_session = null;
 	private boolean m_debug = false;
 	
@@ -20,6 +24,10 @@ public class ArffToPickle implements CommandlineRunnable {
 	private String m_dest = null;
 	
 	private String m_classIndex = "last";
+	
+	private boolean m_shouldImpute = false;
+	private boolean m_shouldStandardize = false;
+	private boolean m_shouldBinarize = false;
 	
 	public void setFilename(String s) {
 		m_filename = s;
@@ -45,26 +53,52 @@ public class ArffToPickle implements CommandlineRunnable {
 		m_classIndex = c;
 	}
 	
-	public void initPythonSession() throws Exception {
-	    if (!PythonSession.pythonAvailable()) {
-	        if (!PythonSession.initSession( "python", true)) {
-	          String envEvalResults = PythonSession.getPythonEnvCheckResults();
-	          throw new Exception("Was unable to start python environment: "
-	            + envEvalResults);
-	        }
-	    } 
+	public boolean getShouldImpute() {
+		return m_shouldImpute;
 	}
 	
-	public void closePythonSession() {
-		PythonSession.releaseSession(this);
+	public void setShouldImpute(boolean b) {
+		m_shouldImpute = b;
+	}
+	
+	public boolean getShouldStandardize() {
+		return m_shouldStandardize;
+	}
+	
+	public void setShouldStandardize(boolean b) {
+		m_shouldStandardize = b;
+	}
+	
+	public boolean getShouldBinarize() {
+		return m_shouldBinarize;
+	}
+	
+	public void setShouldBinarize(boolean b) {
+		m_shouldBinarize = b;
+	}
+	
+	public void setOptions(String[] options) {
+		try {
+			setFilename( Utils.getOption("i", options) );
+			setDest( Utils.getOption("o", options) );
+			setClassIndex( Utils.getOption("c", options) );
+			
+			setShouldImpute( Utils.getFlag("impute", options) );
+			setShouldBinarize( Utils.getFlag("binarize", options) );
+			setShouldStandardize( Utils.getFlag("standardize", options) );
+			
+			setDebug( Utils.getFlag("debug", options) );
+		} catch(Exception ex) {
+			System.err.println(USAGE);
+			ex.printStackTrace();
+		}
+		
 	}
 	
 	public void convert() {
 		try {
-			initPythonSession();
-			if(m_session == null) {
-				m_session = PythonSession.acquireSession(this);
-			}			
+			m_session = Utility.initPythonSession(this, "python", m_debug);
+			
 			DataSource ds = new DataSource(m_filename);
 			Instances instances = ds.getDataSet();
 			
@@ -86,35 +120,24 @@ public class ArffToPickle implements CommandlineRunnable {
 	    	sb.append("_g = gzip.open('" + m_dest.replace("'","\\'") + "', 'wb')\n");
 	    	sb.append("pickle.dump(args, _g, pickle.HIGHEST_PROTOCOL)\n");
 	    	sb.append("_g.close()\n");
-	    	m_session.executeScript(sb.toString(), m_debug);			
+	    	m_session.executeScript(sb.toString(), m_debug);
+	    	
 		} catch(Exception ex) {
+			System.err.println(USAGE);
 			ex.printStackTrace();
 		} finally {
-			closePythonSession();
+			Utility.closePythonSession(this);
 		}
 	}
 
 	@Override
-	public void run(Object toRun, String[] options)
-			throws IllegalArgumentException {
-		if( options.length != 6 && options.length != 7 ) {
-			throw new IllegalArgumentException("Usage: -i <arff file> -o <destination file> -c <class index> [-debug]");
-		}
+	public void run(Object toRun, String[] options) {
 		ArffToPickle arffToPickle = (ArffToPickle) toRun;
-		for(int i = 0; i < options.length; i += 2) {
-			if( options[i].equals("-i")) {
-				arffToPickle.setFilename(options[i+1]);
-			} else if( options[i].equals("-o")) {
-				arffToPickle.setDest(options[i+1]);
-			} else if( options[i].equals("-c") ) {
-				arffToPickle.setClassIndex( options[i+1] );
-			} else if( options[i].equals("-debug")) {
-				arffToPickle.setDebug(true);
-			} else {
-				throw new IllegalArgumentException("Unknown flag: " + options[i] +
-					"\n" + "Usage: -i <arff file> -o <destination file> -c <class index> [-debug]");
-			}
-		}
+		arffToPickle.setOptions(options);
 		arffToPickle.convert();
+	}
+	
+	public static void main(String[] args) {
+		new ArffToPickle().run(new ArffToPickle(), args);
 	}
 }

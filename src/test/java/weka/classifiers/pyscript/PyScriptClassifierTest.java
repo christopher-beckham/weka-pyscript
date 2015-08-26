@@ -1,54 +1,69 @@
 package weka.classifiers.pyscript;
 
+
+
+import static org.junit.Assert.*;
+
+import org.junit.Test;
+
 import weka.classifiers.AbstractClassifierTest;
 import weka.classifiers.Classifier;
+import weka.core.BatchPredictor;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 
-public class PyScriptClassifierTest extends AbstractClassifierTest {
+public class PyScriptClassifierTest {
 	
-	public PyScriptClassifierTest(String name) {
-		super(name);
-	}
+	//public PyScriptClassifierTest(String name) {
+	//	super(name);
+	//}
 
-	public void testRandomForestOnDiabetes() {
-		try{
-			PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
-			ps.setPythonFile("scripts/scikit-rf.py");
-			ps.setTrainPythonFileParams("'num_trees'=10");
-			ps.setTestPythonFileParams("'num_trees'=10");
-			DataSource ds = new DataSource("datasets/diabetes.arff");
-			Instances train = ds.getDataSet();
-			train.setClassIndex( train.numAttributes() - 1 );
-			ps.buildClassifier(train);
-			ps.distributionsForInstances(train);
-		} catch(Exception ex) {
-			ex.printStackTrace();
-			fail();
-		}
+	@Test
+	public void testRandomForestOnDiabetes() throws Exception {
+		System.out.println("testRandomForestOnDiabetes()");
+		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
+		ps.setPythonFile("scripts/scikit-rf.py");
+		ps.setCustomArguments("'num_trees'=10");
+		DataSource ds = new DataSource("datasets/diabetes.arff");
+		Instances train = ds.getDataSet();
+		train.setClassIndex( train.numAttributes() - 1 );
+		ps.buildClassifier(train);
+		assertNotEquals(ps.getModelString(), null);
+		assertNotEquals( ps.distributionsForInstances(train), null );
 	}
 	
-	public void testLinearRegressionOnDiabetes() {
-		try {
-			PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
-			ps.setPythonFile("scripts/linear-reg.py");
-			ps.setTrainPythonFileParams("'alpha'=0.01,'epsilon'=0.0001");
-			ps.setTestPythonFileParams("'alpha'=0.01,'epsilon'=0.0001");
-			DataSource ds = new DataSource("datasets/diabetes_numeric.arff");
-			Instances train = ds.getDataSet();
-			train.setClassIndex( train.numAttributes() - 1 );
-			ps.buildClassifier(train);
-			ps.distributionsForInstances(train);
-			
-		} catch(Exception ex) {
-			ex.printStackTrace();
-			fail();
-		}
+	@Test
+	public void testLinearRegressionOnDiabetes() throws Exception {
+		System.out.println("testLinearRegressionOnDiabetes()");
+		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
+		ps.setPythonFile("scripts/linear-reg.py");
+		ps.setCustomArguments("'alpha'=0.01,'epsilon'=0.0001");
+		DataSource ds = new DataSource("datasets/diabetes_numeric.arff");
+		Instances train = ds.getDataSet();
+		train.setClassIndex( train.numAttributes() - 1 );
+		ps.setShouldStandardize(true);
+		ps.buildClassifier(train);
+		assertNotEquals(ps.getModelString(), null);
+		assertNotEquals( ps.distributionsForInstances(train), null );
+	}
+	
+	@Test
+	public void testExceptionRaiser() throws Exception {
+		System.out.println("testExceptionRaiser()");
+		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
+		ps.setPythonFile("scripts/test-exception.py");
+		DataSource ds = new DataSource("datasets/iris.arff");
+		Instances train = ds.getDataSet();
+		ps.buildClassifier(train);
+		assertEquals(ps.getModelString(), null);
+		
 	}
 
-	@Override
 	public Classifier getClassifier() {
-		return new PyScriptClassifier();
+		PyScriptClassifier ps = new PyScriptClassifier();
+		System.out.println( ps.getBatchSize() );
+		ps.setDebug(true);
+		return ps;
 	}
 
 }

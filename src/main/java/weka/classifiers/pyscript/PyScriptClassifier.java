@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -44,7 +45,7 @@ import weka.python.PythonSession;
  *
  */
 public class PyScriptClassifier extends AbstractClassifier implements
-	  BatchPredictor, CapabilitiesHandler, Randomizable, TechnicalInformationHandler, OptionHandler {
+	  BatchPredictor, CapabilitiesHandler, TechnicalInformationHandler, OptionHandler {
 	
 	private static final long serialVersionUID = 2846535265976949760L;
 	
@@ -52,14 +53,12 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	 * Default values for the parameters.
 	 */
 	private final String DEFAULT_PYFILE = "";
-	private final String DEFAULT_TRAIN_PYFILE_PARAMS = 
-			"";
-	private final String DEFAULT_TEST_PYFILE_PARAMS = DEFAULT_TRAIN_PYFILE_PARAMS;
+	private final String DEFAULT_TRAIN_PYFILE_PARAMS = "";
 	
 	private final boolean DEFAULT_SHOULD_STANDARDIZE = false;
 	private final boolean DEFAULT_SHOULD_BINARIZE = false;
 	private final boolean DEFAULT_SHOULD_IMPUTE = false;
-	private final boolean DEFAULT_USE_VALIDATION_SET = false;
+
 	private final int DEFAULT_SEED = 0;
 	private final String DEFAULT_ARGS_DUMP_FILE = "";
 	private final String DEFAULT_PYTHON_COMMAND = "python";
@@ -67,8 +66,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private boolean m_shouldStandardize = DEFAULT_SHOULD_STANDARDIZE;
 	private boolean m_shouldBinarize = DEFAULT_SHOULD_BINARIZE;
 	private boolean m_shouldImpute = DEFAULT_SHOULD_IMPUTE;
-	private boolean m_useValidationSet = DEFAULT_USE_VALIDATION_SET;
-	private int m_seed = DEFAULT_SEED;
+
 	private String m_argsDumpFile = DEFAULT_ARGS_DUMP_FILE;
 	private String m_pythonCommand = DEFAULT_PYTHON_COMMAND;
 	
@@ -97,10 +95,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private String m_pyTrainFile = DEFAULT_PYFILE;
 	
 	/** If there are any parameters to pass to the training script */
-	private String m_pyTrainFileParams = DEFAULT_TRAIN_PYFILE_PARAMS;
-	
-	/** If there are any parameters to pass to the testing script */
-	private String m_pyTestFileParams = DEFAULT_TEST_PYFILE_PARAMS;
+	private String m_customArgs = DEFAULT_TRAIN_PYFILE_PARAMS;
 	
 	public String getPythonCommand() {
 		return m_pythonCommand;
@@ -130,20 +125,12 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_pyTrainFile = pyFile;
 	}
 	
-	public String getTrainPythonFileParams() {
-		return m_pyTrainFileParams;
+	public String getCustomArguments() {
+		return m_customArgs;
 	}
 	
-	public void setTrainPythonFileParams(String pyTrainFileParams) {
-		m_pyTrainFileParams = pyTrainFileParams;
-	}
-	
-	public String getTestPythonFileParams() {
-		return m_pyTestFileParams;
-	}
-	
-	public void setTestPythonFileParams(String pyTestFileParams) {
-		m_pyTestFileParams = pyTestFileParams;
+	public void setCustomArguments(String pyTrainFileParams) {
+		m_customArgs = pyTrainFileParams;
 	}
 	
 	public boolean getShouldStandardize() {
@@ -170,12 +157,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_shouldImpute = b;
 	}
 	
-	public boolean getUseValidationSet() {
-		return m_useValidationSet;
-	}
-	
-	public void setUseValidationSet(boolean b) {
-		m_useValidationSet = b;
+	public String getModelString() {
+		return m_modelString;
 	}
 	
 	/**
@@ -226,47 +209,21 @@ public class PyScriptClassifier extends AbstractClassifier implements
 				throw new FileNotFoundException( getPythonFile() + " doesn't exist!");
 			}
 			
-			initPythonSession();
-		    		
-			/*
-			 * Prepare training data for script
-			 */
-		    if( getShouldImpute() ) {
-		    	m_replaceMissing = new ReplaceMissingValues();
-				m_replaceMissing.setInputFormat(data);
-				data = Filter.useFilter(data, m_replaceMissing);
-		    }
-			if( getShouldBinarize() ) {
-				m_nominalToBinary = new NominalToBinary();
-		    	m_nominalToBinary.setInputFormat(data);
-		    	data = Filter.useFilter(data, m_nominalToBinary);
-			}
-			if( getShouldStandardize() ) {
-				m_standardize = new Standardize();
-				m_standardize.setInputFormat(data);
-				data = Filter.useFilter(data, m_standardize);
-			}
+			m_session = Utility.initPythonSession( this, getPythonCommand(), getDebug() );
 			
-			Instances validData = null;
-		    
-		    /*
-		     * Ok, split the data up into a training set and
-		     * validation set. Whatever the training set is now,
-		     * 75% of it will be training and 25% will be valid.
-		     */	    
-			if( getUseValidationSet() ) {
-				System.err.println("Use validation set");
-			    Filter stratifiedFolds = new StratifiedRemoveFolds();
-			    stratifiedFolds.setInputFormat(data);
-			    // seed = 0, invert = true, num folds = 4, fold number = 1
-			    stratifiedFolds.setOptions(new String[] {"-S", ""+getSeed(),  "-V",  "-N","4",  "-F","1" } );
-			    data = Filter.useFilter(data, stratifiedFolds);
-			    // this time, don't invert the selection
-			    stratifiedFolds.setOptions( new String[] {"-S",""+getSeed(),  "-N","4",  "-F","1" } );
-			    validData = Filter.useFilter(data, stratifiedFolds);
-			}
+	    	// now load training and testing class
+	    	String driver = "import imp\n"
+	    			+ "cls = imp.load_source('cls','" + getPythonFile() + "')\n";
+	    	List<String> out = m_session.executeScript(driver, getDebug());
+		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+		    	throw new Exception( "An error happened while trying to load the Python scriptn:\n" + out.get(1) );
+		    }    	
+	    	
+	    	data = Utility.preProcessData(data, getShouldImpute(),
+	    			getShouldBinarize(), getShouldStandardize());
+		
 			
-			Utility.pushArgs(data, getTrainPythonFileParams(), m_session, true);
+			Utility.pushArgs(data, getCustomArguments(), m_session, true);
 		    
 		    /*
 		     * Ok, push the training data to Python. The variables will be called
@@ -275,19 +232,9 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    m_session.instancesToPythonAsScikitLearn(data, "train", false);
 		    m_session.executeScript("args['X_train'] = X\nargs['y_train']=Y\n", getDebug());
 		    
-		    /*
-		     * Push the validation data.
-		     */
-		    if( getUseValidationSet() ) {
-		    	m_session.instancesToPythonAsScikitLearn(validData, "valid", false);
-		    	m_session.executeScript("args['X_valid'] = X\nargs['y_valid']=Y\n", getDebug());
-		    }	    
-		    
-		    pickleArgs(true);
-		    
 		    // build the classifier
-		    String driver = "model = cls.train(args)";
-		    List<String> out = m_session.executeScript(driver, getDebug());
+		    driver = "model = cls.train(args)";
+		    out = m_session.executeScript(driver, getDebug());
 		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
 		    	throw new Exception( "An error happened while executing the train() function:\n" + out.get(1) );
 		    }
@@ -307,7 +254,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		} catch(Exception ex) {
 			ex.printStackTrace();
 		} finally {
-			closePythonSession();
+			Utility.closePythonSession(this);
 		}
 
 	}
@@ -322,35 +269,10 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		return m_batchPredictSize;
 	}
 	
-	private void initPythonSession() throws Exception {
-	    if (!PythonSession.pythonAvailable()) {
-	        // try initializing
-	        if (!PythonSession.initSession( getPythonCommand(), getDebug())) {
-	          String envEvalResults = PythonSession.getPythonEnvCheckResults();
-	          throw new Exception("Was unable to start python environment: "
-	            + envEvalResults);
-	        }
-	    }
-    	if(m_session == null) {
-    		m_session = PythonSession.acquireSession(this);  		
-    		System.out.println("is null?" + (m_session==null));  	
-	    	// now load training and testing class
-	    	String driver = "import imp\n"
-	    			+ "cls = imp.load_source('cls','" + getPythonFile() + "')\n";
-	    	m_session.executeScript(driver, getDebug());
-    	}    
-	}
-	
-	private void closePythonSession() {
-		PythonSession.releaseSession(this);
-	}
-	
 	@Override
 	@SuppressWarnings("unchecked")
 	public double[] distributionForInstance(Instance inst)
 			throws Exception {
-		
-		System.out.println("distributionForInstance");
 		
 		Instances insts = new Instances(inst.dataset(), 0);
 	    insts.add(inst);
@@ -362,27 +284,22 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	@Override
 	public void setOptions(String[] options) throws Exception {
 		
-		String tmp = Utils.getOption("pc", options);
+		String tmp = Utils.getOption("cmd", options);
 		if(tmp.length() != 0) {
 			setPythonCommand(tmp);
 		}
 		
-		tmp = Utils.getOption("fn", options);
+		tmp = Utils.getOption("script", options);
 		if(tmp.length() != 0) { 
 			setPythonFile(tmp);
 		}
 		
-		tmp = Utils.getOption("xp", options);
-		setTrainPythonFileParams(tmp);
-
-		tmp = Utils.getOption("yp", options);
-		setTestPythonFileParams(tmp);
+		tmp = Utils.getOption("args", options);
+		setCustomArguments(tmp);
 		
-		setShouldImpute( Utils.getFlag("im", options) );
-		setShouldBinarize( Utils.getFlag("bn", options) );
-		setShouldStandardize( Utils.getFlag("sd", options) );
-		
-		setUseValidationSet( Utils.getFlag("vs", options) );
+		setShouldImpute( Utils.getFlag("impute", options) );
+		setShouldBinarize( Utils.getFlag("binarize", options) );
+		setShouldStandardize( Utils.getFlag("standardize", options) );
 		
 		tmp = Utils.getOption("df", options);
 		setArgsDumpFile(tmp);
@@ -397,32 +314,25 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	public String[] getOptions() {
 		Vector<String> result = new Vector<String>();
 		if( !getPythonCommand().equals("") ) {
-			result.add("-pc");
+			result.add("-cmd");
 			result.add( "" + getPythonCommand() );
 		}
 		if( !getPythonFile().equals("") ) {
-			result.add("-fn");
+			result.add("-script");
 			result.add( "" + getPythonFile() );
 		}		
-		if( !getTrainPythonFileParams().equals("") ) {
-			result.add("-xp");
-			result.add( "" + getTrainPythonFileParams() );
-		}	
-		if( !getTestPythonFileParams().equals("") ) {
-			result.add("-yp");
-			result.add( "" + getTestPythonFileParams() );
+		if( !getCustomArguments().equals("") ) {
+			result.add("-args");
+			result.add( "" + getCustomArguments() );
 		}		
 		if( getShouldImpute() ) {
-			result.add("-im");
+			result.add("-impute");
 		}
 		if( getShouldBinarize() ) {
-			result.add("-bn");
+			result.add("-binarize");
 		}
 		if( getShouldStandardize() ) {
-			result.add("-sd");
-		}
-		if( getUseValidationSet() ) {
-			result.add("-vs");
+			result.add("-standardize");
 		}		
 		if( !getArgsDumpFile().equals("") ) {
 			result.add("-df");
@@ -444,19 +354,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		
 		double[][] dists = new double[insts.numInstances()][insts.numClasses()];
 		
-	    initPythonSession();
+	    m_session = Utility.initPythonSession(this, getPythonCommand(), getDebug());
 	    
 	    try {
 	    	
-		    if( getShouldImpute() ) {
-		    	insts = Filter.useFilter(insts, m_replaceMissing);
-		    }
-			if( getShouldBinarize() ) {
-				insts = Filter.useFilter(insts, m_nominalToBinary);
-			}
-			if( getShouldStandardize() ) {
-				insts = Filter.useFilter(insts, m_standardize);
-			}
+	    	Utility.preProcessData(insts, getShouldImpute(), getShouldBinarize(), getShouldStandardize());
 	        
 	        int numClasses = insts.numClasses();
 	        
@@ -467,10 +369,17 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	        insts = Filter.useFilter(insts, r);
 	        insts.setClassIndex(-1);
 		    
+	    	String driver = "import imp\n"
+	    			+ "cls = imp.load_source('cls','" + getPythonFile() + "')\n";
+	    	List<String> out = m_session.executeScript(driver, getDebug());
+		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+		    	throw new Exception( "An error happened while trying to load the Python script:\n" + out.get(1) );
+		    }
+	        
 		    //m_session.executeScript("args = dict()", getDebug());
-		    Utility.pushArgs(insts, getTestPythonFileParams(), m_session, false);
+		    Utility.pushArgs(insts, getCustomArguments(), m_session, false);
 		    
-		    pickleArgs(false);
+		    //pickleArgs(false);
 		    
 		    /*
 		     * Push the test data. These will also be X and Y, so have a
@@ -482,12 +391,14 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    /*
 		     * Push the weights of the saved model over.
 		     */
-		    m_session.setPythonPickledVariableValue("best_weights", m_pickledModel, getDebug());
-		     
+		    m_session.setPythonPickledVariableValue("best_weights", m_pickledModel, getDebug());	     
 		    
-		    String driver = "preds = cls.test(args, best_weights)";
+		    driver = "preds = cls.test(args, best_weights)";
 		    
-		    m_session.executeScript(driver, getDebug());
+		    out = m_session.executeScript(driver, getDebug());
+		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+		    	throw new Exception( "An error happened while executing the test() function:\n" + out.get(1) );
+		    }
 		    
 			List<Object> preds = 
 		    	(List<Object>) m_session.getVariableValueFromPythonAsJson("preds", getDebug());
@@ -507,7 +418,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    } catch(Exception ex) {
 			ex.printStackTrace();
 		} finally {
-			closePythonSession();
+			Utility.closePythonSession(this);
 		}
 	    
 	    return null;
@@ -517,16 +428,6 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	@Override
 	public String toString() {
 		return m_modelString;
-	}
-
-	@Override
-	public void setSeed(int seed) {
-		m_seed = seed;
-	}
-
-	@Override
-	public int getSeed() {
-		return m_seed;
 	}
 	
 	public String globalInfo() {  
