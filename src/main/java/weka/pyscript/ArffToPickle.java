@@ -1,5 +1,7 @@
 package weka.pyscript;
 
+import java.util.List;
+
 import weka.core.CommandlineRunnable;
 import weka.core.Instances;
 import weka.core.Utils;
@@ -110,7 +112,13 @@ public class ArffToPickle implements CommandlineRunnable {
 				instances.setClassIndex( Integer.parseInt(m_classIndex) );
 			}
 			
-			Utility.pushArgs(instances, "", m_session, m_debug);
+			List<String> out = m_session.executeScript(
+				Utility.createArgsScript(instances, "", m_session, m_debug),
+				m_debug
+			);
+		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+		    	throw new Exception( "An error happened while trying to create the args variable:\n" + out.get(1) );
+		    }
 			
 		    m_session.instancesToPythonAsScikitLearn(instances, "train", false);
 		    m_session.executeScript("args['X_train'] = X\nargs['y_train'] = Y\n", getDebug());

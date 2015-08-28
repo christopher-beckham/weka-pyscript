@@ -81,14 +81,14 @@ public class Utility {
 	}
 	
 	/**
-	 * Push an args variable to the specified Python
-	 * session.
+	 * Create a script that pushes args to the Python VM
 	 * @param df data frame
 	 * @param session the Python session to send args to
 	 * @param debug print debug information?
+	 * @return the script to execute
 	 * @throws Exception if an error traceback has been detected in stderr
 	 */
-	public static void pushArgs(Instances df, String customParams,
+	public static String createArgsScript(Instances df, String customParams,
 			PythonSession session, boolean debug) throws Exception {
 		
 		StringBuilder script = new StringBuilder();
@@ -99,8 +99,8 @@ public class Utility {
 		if(df.classIndex() != -1) {
 			script.append("args['num_classes'] = " + df.numClasses() + "\n");
 		}
-		script.append("args['num_attributes'] = " + (df.numAttributes()-1) + "\n");
-		script.append("args['num_instances'] = " + df.numInstances() + "\n");
+		//script.append("args['num_attributes'] = " + (df.numAttributes()-1) + "\n");
+		//script.append("args['num_instances'] = " + df.numInstances() + "\n");
 		script.append("args['relation_name'] = " +
 	    		"'" + df.relationName().replace("'", "") + "'" + "\n");
 	    
@@ -168,10 +168,7 @@ public class Utility {
 		    }
 	    }
 	    
-	    List<String> out = session.executeScript(script.toString(), debug);
-	    if(out.get(1).contains(TRACEBACK_MSG)) {
-	    	throw new Exception( out.get(1) );
-	    }
+	    return script.toString();
 	    
 	}
 

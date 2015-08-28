@@ -59,7 +59,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private final boolean DEFAULT_SHOULD_BINARIZE = false;
 	private final boolean DEFAULT_SHOULD_IMPUTE = false;
 
-	private final int DEFAULT_SEED = 0;
+
 	private final String DEFAULT_ARGS_DUMP_FILE = "";
 	private final String DEFAULT_PYTHON_COMMAND = "python";
 	
@@ -70,9 +70,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	private String m_argsDumpFile = DEFAULT_ARGS_DUMP_FILE;
 	private String m_pythonCommand = DEFAULT_PYTHON_COMMAND;
 	
-	private Filter m_nominalToBinary = null;
-	private Filter m_standardize = null;
-	private Filter m_replaceMissing = null;
+	private String m_argsScript = null;
 	
 	protected String m_batchPredictSize = "100";
 	
@@ -223,7 +221,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    			getShouldBinarize(), getShouldStandardize());
 		
 			
-			Utility.pushArgs(data, getCustomArguments(), m_session, true);
+			m_argsScript = Utility.createArgsScript(data, getCustomArguments(), m_session, true);
+		    out = m_session.executeScript(m_argsScript, getDebug());
+		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+		    	throw new Exception( "An error happened while trying to create the args variable:\n" + out.get(1) );
+		    }
 		    
 		    /*
 		     * Ok, push the training data to Python. The variables will be called
@@ -376,10 +378,10 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    	throw new Exception( "An error happened while trying to load the Python script:\n" + out.get(1) );
 		    }
 	        
-		    //m_session.executeScript("args = dict()", getDebug());
-		    Utility.pushArgs(insts, getCustomArguments(), m_session, false);
-		    
-		    //pickleArgs(false);
+		    out = m_session.executeScript(m_argsScript, getDebug());
+		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+		    	throw new Exception( "An error happened while trying to create the args variable:\n" + out.get(1) );
+		    }
 		    
 		    /*
 		     * Push the test data. These will also be X and Y, so have a
