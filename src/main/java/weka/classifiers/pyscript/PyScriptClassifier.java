@@ -209,12 +209,24 @@ public class PyScriptClassifier extends AbstractClassifier implements
 			
 			m_session = Utility.initPythonSession( this, getPythonCommand(), getDebug() );
 			
+			// set the working directory of the python vm to that of the script
+			String parentDir = new File(getPythonFile()).getAbsoluteFile().getParent();
+			String scriptName = new File(getPythonFile()).getName();
+			if(parentDir != null) {
+				String driver = "import os\nos.chdir('" + parentDir + "')\n";
+				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
+				List<String> out = m_session.executeScript(driver, getDebug());
+				if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+					throw new Exception("An error happened while trying to change the working directory:\n" + out.get(1));
+				}
+			}
+			
 	    	// now load training and testing class
 	    	String driver = "import imp\n"
-	    			+ "cls = imp.load_source('cls','" + getPythonFile() + "')\n";
+	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
 	    	List<String> out = m_session.executeScript(driver, getDebug());
 		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
-		    	throw new Exception( "An error happened while trying to load the Python scriptn:\n" + out.get(1) );
+		    	throw new Exception( "An error happened while trying to load the Python script:\n" + out.get(1) );
 		    }    	
 	    	
 	    	data = Utility.preProcessData(data, getShouldImpute(),
@@ -360,6 +372,18 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    
 	    try {
 	    	
+			// set the working directory of the python vm to that of the script
+			String parentDir = new File(getPythonFile()).getAbsoluteFile().getParent();
+			String scriptName = new File(getPythonFile()).getName();
+			if(parentDir != null) {
+				String driver = "import os\nos.chdir('" + parentDir + "')\n";
+				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
+				List<String> out = m_session.executeScript(driver, getDebug());
+				if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+					throw new Exception("An error happened while trying to change the working directory:\n" + out.get(1));
+				}
+			}
+			
 	    	Utility.preProcessData(insts, getShouldImpute(), getShouldBinarize(), getShouldStandardize());
 	        
 	        int numClasses = insts.numClasses();
@@ -372,7 +396,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	        insts.setClassIndex(-1);
 		    
 	    	String driver = "import imp\n"
-	    			+ "cls = imp.load_source('cls','" + getPythonFile() + "')\n";
+	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
 	    	List<String> out = m_session.executeScript(driver, getDebug());
 		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
 		    	throw new Exception( "An error happened while trying to load the Python script:\n" + out.get(1) );
