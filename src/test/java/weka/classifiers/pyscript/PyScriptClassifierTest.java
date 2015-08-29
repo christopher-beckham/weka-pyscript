@@ -48,6 +48,20 @@ public class PyScriptClassifierTest {
 	}
 	
 	@Test
+	public void testZeroROnIris() throws Exception {
+		System.out.println("testZeroROnIris()");
+		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
+		ps.setPythonFile("scripts/zeror.py");
+		ps.setCustomArguments("");
+		DataSource ds = new DataSource("datasets/iris.arff");
+		Instances train = ds.getDataSet();
+		train.setClassIndex( train.numAttributes() - 1 );
+		ps.buildClassifier(train);
+		assertNotEquals(ps.getModelString(), null);
+		assertNotEquals( ps.distributionsForInstances(train), null );	
+	}
+	
+	@Test
 	public void testExceptionRaiser() throws Exception {
 		System.out.println("testExceptionRaiser()");
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
