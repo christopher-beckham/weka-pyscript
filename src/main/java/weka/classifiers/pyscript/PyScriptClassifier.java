@@ -258,7 +258,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    
 		    // get model description
 		    driver = "model_description = cls.describe(args, model)";
-		    m_session.executeScript(driver, getDebug());
+		    out = m_session.executeScript(driver, getDebug());
 		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
 		    	throw new Exception( "An error happened while executing the describe() function:\n" + out.get(1) );
 		    }
