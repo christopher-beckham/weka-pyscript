@@ -34,3 +34,29 @@ java weka.Run weka.classifiers.pyscript.PyScriptClassifier
 ```
 
 and see if WEKA recognises it. You should get an error like "Weka exception: No training file and no object input file given.".
+
+Examples
+---
+
+#### Linear regression
+
+Run a linear regressor on the diabetes dataset.
+
+```
+java weka.Run .PyScriptClassifier \
+  -script scripts/linear-reg.py \
+  -standardize \
+  -t datasets/diabetes_numeric.arff -c last -no-cv
+```
+
+We can pass custom arguments in, such as the learning rate, e.g. by specifying `-args "'alpha'=0.1"`.
+
+### ZeroR
+
+We can also run ZeroR on a nominal dataset such as Iris.
+
+```
+java weka.Run .PyScriptClassifier \
+  -script scripts/zeror.py \
+  -t datasets/iris.arff -c last -no-cv
+```
