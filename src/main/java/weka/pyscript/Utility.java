@@ -5,6 +5,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 
+import weka.core.Attribute;
 import weka.core.Instances;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.NominalToBinary;
@@ -98,6 +99,8 @@ public class Utility {
 		// pass general information related to the training data
 		if(df.classIndex() != -1) {
 			script.append("args['num_classes'] = " + df.numClasses() + "\n");
+			String attrType = Attribute.typeToString( df.classAttribute() );
+			script.append("args['class_type'] = '" + attrType + "'\n");
 		}
 		//script.append("args['num_attributes'] = " + (df.numAttributes()-1) + "\n");
 		//script.append("args['num_instances'] = " + df.numInstances() + "\n");

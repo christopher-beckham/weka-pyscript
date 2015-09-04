@@ -52,13 +52,12 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	/**
 	 * Default values for the parameters.
 	 */
-	private final String DEFAULT_PYFILE = "";
+	private final File DEFAULT_PYFILE = new File( System.getProperty("user.dir") );
 	private final String DEFAULT_TRAIN_PYFILE_PARAMS = "";
 	
 	private final boolean DEFAULT_SHOULD_STANDARDIZE = false;
 	private final boolean DEFAULT_SHOULD_BINARIZE = false;
 	private final boolean DEFAULT_SHOULD_IMPUTE = false;
-
 
 	private final String DEFAULT_ARGS_DUMP_FILE = "";
 	private final String DEFAULT_PYTHON_COMMAND = "python";
@@ -90,7 +89,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	*/
 	
 	/** The default Python script to execute */
-	private String m_pyTrainFile = DEFAULT_PYFILE;
+	private File m_pyTrainFile = DEFAULT_PYFILE;
 	
 	/** If there are any parameters to pass to the training script */
 	private String m_customArgs = DEFAULT_TRAIN_PYFILE_PARAMS;
@@ -115,19 +114,19 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_argsDumpFile = s;
 	}
 	
-	public String getPythonFile() {
+	public File getPythonFile() {
 		return m_pyTrainFile;
 	}
 	
-	public void setPythonFile(String pyFile) {
+	public void setPythonFile(File pyFile) {
 		m_pyTrainFile = pyFile;
 	}
 	
-	public String getCustomArguments() {
+	public String getArguments() {
 		return m_customArgs;
 	}
 	
-	public void setCustomArguments(String pyTrainFileParams) {
+	public void setArguments(String pyTrainFileParams) {
 		m_customArgs = pyTrainFileParams;
 	}
 	
@@ -203,15 +202,15 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		try {
 		
 			// see if the python file exists
-			if( ! new File(getPythonFile()).exists() ) {
+			if( !getPythonFile().exists() ) {
 				throw new FileNotFoundException( getPythonFile() + " doesn't exist!");
 			}
 			
 			m_session = Utility.initPythonSession( this, getPythonCommand(), getDebug() );
 			
 			// set the working directory of the python vm to that of the script
-			String parentDir = new File(getPythonFile()).getAbsoluteFile().getParent();
-			String scriptName = new File(getPythonFile()).getName();
+			String parentDir = getPythonFile().getAbsoluteFile().getParent();
+			String scriptName = getPythonFile().getName();
 			if(parentDir != null) {
 				String driver = "import os\nos.chdir('" + parentDir + "')\n";
 				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
@@ -230,10 +229,9 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    }    	
 	    	
 	    	data = Utility.preProcessData(data, getShouldImpute(),
-	    			getShouldBinarize(), getShouldStandardize());
-		
+	    			getShouldBinarize(), getShouldStandardize());		
 			
-			m_argsScript = Utility.createArgsScript(data, getCustomArguments(), m_session, true);
+			m_argsScript = Utility.createArgsScript(data, getArguments(), m_session, true);
 		    out = m_session.executeScript(m_argsScript, getDebug());
 		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
 		    	throw new Exception( "An error happened while trying to create the args variable:\n" + out.get(1) );
@@ -305,11 +303,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		
 		tmp = Utils.getOption("script", options);
 		if(tmp.length() != 0) { 
-			setPythonFile(tmp);
+			setPythonFile( new File(tmp) );
 		}
 		
 		tmp = Utils.getOption("args", options);
-		setCustomArguments(tmp);
+		setArguments(tmp);
 		
 		setShouldImpute( Utils.getFlag("impute", options) );
 		setShouldBinarize( Utils.getFlag("binarize", options) );
@@ -331,13 +329,13 @@ public class PyScriptClassifier extends AbstractClassifier implements
 			result.add("-cmd");
 			result.add( "" + getPythonCommand() );
 		}
-		if( !getPythonFile().equals("") ) {
+		if( getPythonFile() != null ) {
 			result.add("-script");
-			result.add( "" + getPythonFile() );
+			result.add( "" + getPythonFile().getAbsolutePath() );
 		}		
-		if( !getCustomArguments().equals("") ) {
+		if( !getArguments().equals("") ) {
 			result.add("-args");
-			result.add( "" + getCustomArguments() );
+			result.add( "" + getArguments() );
 		}		
 		if( getShouldImpute() ) {
 			result.add("-impute");
@@ -363,18 +361,23 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	public double[][] distributionsForInstances(Instances insts)
 			throws Exception {
 		
-		System.out.format("test = %s\n", insts.numInstances());
-		System.out.format("batch size = %s\n", getBatchSize());
-		
-		double[][] dists = new double[insts.numInstances()][insts.numClasses()];
-		
-	    m_session = Utility.initPythonSession(this, getPythonCommand(), getDebug());
-	    
 	    try {
+		
+			System.out.format("test = %s\n", insts.numInstances());
+			System.out.format("batch size = %s\n", getBatchSize());
+			
+			double[][] dists = new double[insts.numInstances()][insts.numClasses()];
+			
+		    m_session = Utility.initPythonSession(this, getPythonCommand(), getDebug());
+	    	
+			// see if the python file exists
+			if( !getPythonFile().exists() ) {
+				throw new FileNotFoundException( getPythonFile() + " doesn't exist!");
+			}
 	    	
 			// set the working directory of the python vm to that of the script
-			String parentDir = new File(getPythonFile()).getAbsoluteFile().getParent();
-			String scriptName = new File(getPythonFile()).getName();
+			String parentDir = getPythonFile().getAbsoluteFile().getParent();
+			String scriptName = getPythonFile().getName();
 			if(parentDir != null) {
 				String driver = "import os\nos.chdir('" + parentDir + "')\n";
 				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
@@ -474,31 +477,27 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	public Enumeration<Option> listOptions() {
 		Vector<Option> newVector = new Vector<Option>();
 		newVector.addElement(
-			new Option("\tPython script", "pythonFile", 1, "-fn <filename>")
+			new Option("\tPython script", "script", 1, "-script <filename>")
 		);
 		newVector.addElement(
-			new Option("\tTraining arguments", "trainPythonFileParams", 1, "-xp <string>")
+			new Option("\tArguments", "arguments", 1, "-args <string>")
 		);
 		newVector.addElement(
-			new Option("\tTesting arguments", "testPythonFileParams", 1, "-yp <string>")
+			new Option("\tShould we binarise nominal attributes?", "shouldBinarize", 0, "-binarize")
 		);
 		newVector.addElement(
-			new Option("\tShould we binarise nominal attributes?", "shouldBinarize", 0, "-bn")
+			new Option("\tShould we impute missing values with mean?", "shouldImpute", 0, "-impute")
 		);
 		newVector.addElement(
-			new Option("\tShould we impute missing values with mean?", "shouldImpute", 0, "-im")
-		);
-		newVector.addElement(
-			new Option("\tShould we standardize the attributes?", "shouldStandardize", 0, "-sd")
-		);
-		newVector.addElement(
-			new Option("\tSet aside 25% of training data as validation data?", "useValidationSet", 0, "-vs")
-		);
-		newVector.addElement(
-			new Option("\tSpecify a filename to dump pickled ARFF to (for debugging purposes)", "argsDumpFile", 1, "-df <filename>")
+			new Option("\tShould we standardize the attributes?", "shouldStandardize", 0, "-standardize")
 		);
 		newVector.addAll(Collections.list(super.listOptions()));
 		return newVector.elements();
+	}
+	
+	@Override
+	public boolean implementsMoreEfficientBatchPrediction() {
+		return true;
 	}
 	
 	public static void main(String[] argv) {

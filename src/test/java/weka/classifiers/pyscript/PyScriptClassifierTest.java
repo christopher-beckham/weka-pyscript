@@ -4,6 +4,8 @@ package weka.classifiers.pyscript;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
+
 import org.junit.Test;
 
 import weka.classifiers.AbstractClassifierTest;
@@ -22,8 +24,8 @@ public class PyScriptClassifierTest {
 	public void testRandomForestOnDiabetes() throws Exception {
 		System.out.println("testRandomForestOnDiabetes()");
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
-		ps.setPythonFile("scripts/scikit-rf.py");
-		ps.setCustomArguments("'num_trees'=10");
+		ps.setPythonFile( new File("scripts/scikit-rf.py") );
+		ps.setArguments("'num_trees'=10");
 		DataSource ds = new DataSource("datasets/diabetes.arff");
 		Instances train = ds.getDataSet();
 		train.setClassIndex( train.numAttributes() - 1 );
@@ -36,8 +38,8 @@ public class PyScriptClassifierTest {
 	public void testLinearRegressionOnDiabetes() throws Exception {
 		System.out.println("testLinearRegressionOnDiabetes()");
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
-		ps.setPythonFile("scripts/linear-reg.py");
-		ps.setCustomArguments("'alpha'=0.01,'epsilon'=0.0001");
+		ps.setPythonFile( new File("scripts/linear-reg.py") );
+		ps.setArguments("'alpha'=0.01,'epsilon'=0.0001");
 		DataSource ds = new DataSource("datasets/diabetes_numeric.arff");
 		Instances train = ds.getDataSet();
 		train.setClassIndex( train.numAttributes() - 1 );
@@ -51,8 +53,8 @@ public class PyScriptClassifierTest {
 	public void testZeroROnIris() throws Exception {
 		System.out.println("testZeroROnIris()");
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
-		ps.setPythonFile("scripts/zeror.py");
-		ps.setCustomArguments("");
+		ps.setPythonFile( new File("scripts/zeror.py") );
+		ps.setArguments("");
 		DataSource ds = new DataSource("datasets/iris.arff");
 		Instances train = ds.getDataSet();
 		train.setClassIndex( train.numAttributes() - 1 );
@@ -65,7 +67,7 @@ public class PyScriptClassifierTest {
 	public void testExceptionRaiser() throws Exception {
 		System.out.println("testExceptionRaiser()");
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
-		ps.setPythonFile("scripts/test-exception.py");
+		ps.setPythonFile( new File("scripts/test-exception.py") );
 		DataSource ds = new DataSource("datasets/iris.arff");
 		Instances train = ds.getDataSet();
 		ps.buildClassifier(train);
