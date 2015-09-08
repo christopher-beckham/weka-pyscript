@@ -21,6 +21,7 @@ import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Option;
 import weka.core.OptionHandler;
+import weka.core.OptionMetadata;
 import weka.core.Randomizable;
 import weka.core.TechnicalInformation;
 import weka.core.TechnicalInformation.Field;
@@ -42,31 +43,23 @@ import weka.python.PythonSession;
  * training and testing instances (in the form of Numpy arrays)
  * and return predictions.
  * @author cjb60
- *
  */
-public class PyScriptClassifier extends AbstractClassifier implements
-	  BatchPredictor, CapabilitiesHandler, TechnicalInformationHandler, OptionHandler {
+public class PyScriptClassifier extends AbstractClassifier implements BatchPredictor,
+	TechnicalInformationHandler {
 	
 	private static final long serialVersionUID = 2846535265976949760L;
 	
-	/**
-	 * Default values for the parameters.
-	 */
 	private final File DEFAULT_PYFILE = new File( System.getProperty("user.dir") );
 	private final String DEFAULT_TRAIN_PYFILE_PARAMS = "";
-	
 	private final boolean DEFAULT_SHOULD_STANDARDIZE = false;
 	private final boolean DEFAULT_SHOULD_BINARIZE = false;
 	private final boolean DEFAULT_SHOULD_IMPUTE = false;
-
-	private final String DEFAULT_ARGS_DUMP_FILE = "";
 	private final String DEFAULT_PYTHON_COMMAND = "python";
 	
 	private boolean m_shouldStandardize = DEFAULT_SHOULD_STANDARDIZE;
 	private boolean m_shouldBinarize = DEFAULT_SHOULD_BINARIZE;
 	private boolean m_shouldImpute = DEFAULT_SHOULD_IMPUTE;
 
-	private String m_argsDumpFile = DEFAULT_ARGS_DUMP_FILE;
 	private String m_pythonCommand = DEFAULT_PYTHON_COMMAND;
 	
 	private String m_argsScript = null;
@@ -79,21 +72,17 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	
 	private String m_modelString = null;
 	
-	/*
-	private int m_numClasses = 0;
-	private int m_numAttributes = 0;
-	private int m_numInstances = 0;
-	private String m_relationName = "";
-	private String m_className = null;
-	private String[] m_attrNames = null;
-	*/
-	
 	/** The default Python script to execute */
 	private File m_pyTrainFile = DEFAULT_PYFILE;
 	
 	/** If there are any parameters to pass to the training script */
 	private String m_customArgs = DEFAULT_TRAIN_PYFILE_PARAMS;
 	
+	@OptionMetadata(
+		displayName = "pythonCommand",
+		description = "Python executable command", commandLineParamName = "cmd",
+		commandLineParamSynopsis = "-cmd <python executable>", displayOrder = 4
+	)
 	public String getPythonCommand() {
 		return m_pythonCommand;
 	}
@@ -102,18 +91,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_pythonCommand = s;
 	}
 	
-	public String argsDumpFileTipText() {
-		return "args dump";
-	}
-	
-	public String getArgsDumpFile() {
-		return m_argsDumpFile;
-	}
-	
-	public void setArgsDumpFile(String s) {
-		m_argsDumpFile = s;
-	}
-	
+	@OptionMetadata(
+		displayName = "pythonFile",
+		description = "Path to Python script", commandLineParamName = "script",
+		commandLineParamSynopsis = "-script <path to script>", displayOrder = 4
+	)
 	public File getPythonFile() {
 		return m_pyTrainFile;
 	}
@@ -122,6 +104,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_pyTrainFile = pyFile;
 	}
 	
+	@OptionMetadata(
+		displayName = "arguments",
+		description = "Arguments to pass to the script", commandLineParamName = "args",
+		commandLineParamSynopsis = "-args <arguments>", displayOrder = 4
+	)	
 	public String getArguments() {
 		return m_customArgs;
 	}
@@ -130,6 +117,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_customArgs = pyTrainFileParams;
 	}
 	
+	@OptionMetadata(
+		displayName = "shouldStandardize",
+		description = "Should the data be standardized?", commandLineParamName = "standardize",
+		commandLineParamSynopsis = "-standardize", displayOrder = 4
+	)
 	public boolean getShouldStandardize() {
 		return m_shouldStandardize;
 	}
@@ -138,6 +130,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_shouldStandardize = b;
 	}
 	
+	@OptionMetadata(
+		displayName = "shouldBinarize",
+		description = "Should nominal attributes be binarized?", commandLineParamName = "binarize",
+		commandLineParamSynopsis = "-binarize", displayOrder = 4
+	)
 	public boolean getShouldBinarize() {
 		return m_shouldBinarize;
 	}
@@ -146,6 +143,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_shouldBinarize = b;
 	}
 	
+	@OptionMetadata(
+		displayName = "shouldImpute",
+		description = "Should missing values be imputed (with mean imputation)?", commandLineParamName = "impute",
+		commandLineParamSynopsis = "-impute", displayOrder = 4
+	)	
 	public boolean getShouldImpute() {
 		return m_shouldImpute;
 	}
@@ -154,46 +156,23 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_shouldImpute = b;
 	}
 	
-	public String getModelString() {
-		return m_modelString;
+	@OptionMetadata(
+		displayName = "batchSize",
+		description = "How many instances should be passed to the model at testing time", commandLineParamName = "batch",
+		commandLineParamSynopsis = "-batch <batch size>", displayOrder = 4
+	)		
+	@Override
+	public String getBatchSize() {
+		return m_batchPredictSize;
+	}	
+	
+	@Override
+	public void setBatchSize(String size) {
+		m_batchPredictSize = size;
 	}
 	
-	/**
-	 * Write out the args object to a gzipped pickle
-	 * for debugging purposes.
-	 * @param trainMode if true, the filename will end in ".train.pkl.gz",
-	 * else ".test.pkl.gz"
-	 * @throws WekaException
-	 */
-	public void pickleArgs(boolean trainMode) throws WekaException {
-	    // if args dump is set, then save it out to file
-	    if( !getArgsDumpFile().equals("") ) {
-	    	// see if file exists, if it does then append a number to it
-	    	// e.g. if mnist.pkl.gz exists, then do mnist.pkl.gz.1
-	    	String currentFilenameTemplate = getArgsDumpFile();
-	    	if(trainMode) {
-	    		currentFilenameTemplate += ".train";
-	    	} else {
-	    		currentFilenameTemplate += ".test";
-	    	}
-	    	
-	    	String currentFilename = currentFilenameTemplate;
-	    	int idx = 0;
-	    	while(true) {
-	    		if( new File(currentFilename).exists() ) {
-	    			currentFilename = currentFilenameTemplate + "." + idx;
-	    			idx += 1;
-	    		} else {
-	    			break;
-	    		}
-	    	}
-	    	StringBuilder sb = new StringBuilder();
-	    	sb.append("import gzip\nimport cPickle as pickle\n");
-	    	sb.append("_g = gzip.open('" + currentFilename + "', 'wb')\n");
-	    	sb.append("pickle.dump(args, _g, pickle.HIGHEST_PROTOCOL)\n");
-	    	sb.append("_g.close()\n");
-	    	m_session.executeScript(sb.toString(), getDebug());
-	    }
+	public String getModelString() {
+		return m_modelString;
 	}
 
 	@Override
@@ -270,92 +249,14 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		}
 
 	}
-
-	@Override
-	public void setBatchSize(String size) {
-		m_batchPredictSize = size;
-	}
-
-	@Override
-	public String getBatchSize() {
-		return m_batchPredictSize;
-	}
 	
 	@Override
-	@SuppressWarnings("unchecked")
 	public double[] distributionForInstance(Instance inst)
-			throws Exception {
-		
+			throws Exception {	
 		Instances insts = new Instances(inst.dataset(), 0);
-	    insts.add(inst);
-		
-		return distributionsForInstances(insts)[0];
-		
+	    insts.add(inst);		
+		return distributionsForInstances(insts)[0];		
 	}	
-	
-	@Override
-	public void setOptions(String[] options) throws Exception {
-		
-		String tmp = Utils.getOption("cmd", options);
-		if(tmp.length() != 0) {
-			setPythonCommand(tmp);
-		}
-		
-		tmp = Utils.getOption("script", options);
-		if(tmp.length() != 0) { 
-			setPythonFile( new File(tmp) );
-		}
-		
-		tmp = Utils.getOption("args", options);
-		setArguments(tmp);
-		
-		setShouldImpute( Utils.getFlag("impute", options) );
-		setShouldBinarize( Utils.getFlag("binarize", options) );
-		setShouldStandardize( Utils.getFlag("standardize", options) );
-		
-		tmp = Utils.getOption("df", options);
-		setArgsDumpFile(tmp);
-		
-		tmp = Utils.getOption("-batch", options);
-		setBatchSize(tmp);
-		
-		super.setOptions(options);
-	}
-	
-	@Override
-	public String[] getOptions() {
-		Vector<String> result = new Vector<String>();
-		if( !getPythonCommand().equals("") ) {
-			result.add("-cmd");
-			result.add( "" + getPythonCommand() );
-		}
-		if( getPythonFile() != null ) {
-			result.add("-script");
-			result.add( "" + getPythonFile().getAbsolutePath() );
-		}		
-		if( !getArguments().equals("") ) {
-			result.add("-args");
-			result.add( "" + getArguments() );
-		}		
-		if( getShouldImpute() ) {
-			result.add("-impute");
-		}
-		if( getShouldBinarize() ) {
-			result.add("-binarize");
-		}
-		if( getShouldStandardize() ) {
-			result.add("-standardize");
-		}		
-		if( !getArgsDumpFile().equals("") ) {
-			result.add("-df");
-			result.add( "" + getArgsDumpFile() );
-		}
-		result.add("-batch");
-		result.add( getBatchSize() );
-		
-		Collections.addAll(result, super.getOptions());
-	    return result.toArray(new String[result.size()]);
-	}
 
 	@Override
 	public double[][] distributionsForInstances(Instances insts)
@@ -363,8 +264,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		
 	    try {
 		
-			System.out.format("test = %s\n", insts.numInstances());
-			System.out.format("batch size = %s\n", getBatchSize());
+			//System.out.format("test = %s\n", insts.numInstances());
+			//System.out.format("batch size = %s\n", getBatchSize());
 			
 			double[][] dists = new double[insts.numInstances()][insts.numClasses()];
 			
@@ -471,28 +372,6 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		result.setValue(Field.AUTHOR, "C. Beckham");
 		result.setValue(Field.TITLE, "A simple approach to create Python classifiers for WEKA" );
 		return result;
-	}
-	
-	@Override
-	public Enumeration<Option> listOptions() {
-		Vector<Option> newVector = new Vector<Option>();
-		newVector.addElement(
-			new Option("\tPython script", "script", 1, "-script <filename>")
-		);
-		newVector.addElement(
-			new Option("\tArguments", "arguments", 1, "-args <string>")
-		);
-		newVector.addElement(
-			new Option("\tShould we binarise nominal attributes?", "shouldBinarize", 0, "-binarize")
-		);
-		newVector.addElement(
-			new Option("\tShould we impute missing values with mean?", "shouldImpute", 0, "-impute")
-		);
-		newVector.addElement(
-			new Option("\tShould we standardize the attributes?", "shouldStandardize", 0, "-standardize")
-		);
-		newVector.addAll(Collections.list(super.listOptions()));
-		return newVector.elements();
 	}
 	
 	@Override
