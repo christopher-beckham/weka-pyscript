@@ -154,17 +154,9 @@ public class Utility {
 	    	script.append( "args['class'] = '" + classAttr.replace("'", "") + "'\n");
 	    }
 	    
-	    // pass custom parameters from -xp or -yp
-	    /*
-	    String customParams = null;
-	    if(trainMode) {
-	    	customParams = getTrainPythonFileParams();
-	    } else {
-	    	customParams = getTestPythonFileParams();
-	    }
-	    */
+	    // custom arguments
 	    if( !customParams.equals("") ) {
-		    String[] extraParams = customParams.split(",");
+		    String[] extraParams = customParams.split(";");
 		    for(String param : extraParams) {
 		    	String[] paramSplit = param.split("=");
 		    	script.append("args[" + paramSplit[0] + "] = " + paramSplit[1] + "\n");

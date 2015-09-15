@@ -104,6 +104,9 @@ public class ArffToPickle implements CommandlineRunnable {
 			DataSource ds = new DataSource(m_filename);
 			Instances instances = ds.getDataSet();
 			
+			instances = Utility.preProcessData(instances, 
+					getShouldImpute(), getShouldBinarize(), getShouldStandardize() );
+			
 			if(m_classIndex.equals("first")) {
 				instances.setClassIndex(0);
 			} else if (m_classIndex.equals("last") ) {
