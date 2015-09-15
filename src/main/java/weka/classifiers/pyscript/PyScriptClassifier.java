@@ -55,18 +55,16 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	private final boolean DEFAULT_SHOULD_BINARIZE = false;
 	private final boolean DEFAULT_SHOULD_IMPUTE = false;
 	private final String DEFAULT_PYTHON_COMMAND = "python";
+	private final boolean DEFAULT_PRINT_STDOUT = false;
 	
 	private boolean m_shouldStandardize = DEFAULT_SHOULD_STANDARDIZE;
 	private boolean m_shouldBinarize = DEFAULT_SHOULD_BINARIZE;
 	private boolean m_shouldImpute = DEFAULT_SHOULD_IMPUTE;
-
 	private String m_pythonCommand = DEFAULT_PYTHON_COMMAND;
-	
 	private String m_argsScript = null;
-	
 	protected String m_batchPredictSize = "100";
-	
 	private String m_pickledModel = null;
+	private boolean m_printStdOut = DEFAULT_PRINT_STDOUT;
 	
 	private transient PythonSession m_session = null;
 	
@@ -77,6 +75,19 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	
 	/** If there are any parameters to pass to the training script */
 	private String m_customArgs = DEFAULT_TRAIN_PYFILE_PARAMS;
+	
+	@OptionMetadata(
+	   displayName = "printStdOut", commandLineParamName = "stdout",
+	   description = "Print standard out from Python script to stderr?",
+	   commandLineParamSynopsis = "-stdout", commandLineParamIsFlag = true, displayOrder = 4
+	)
+	public boolean getPrintStdOut() {
+		return m_printStdOut;
+	}
+	
+	public void setPrintStdOut(boolean b) {
+		m_printStdOut = b;
+	}
 	
 	@OptionMetadata(
 		displayName = "pythonCommand",
@@ -120,7 +131,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	@OptionMetadata(
 		displayName = "shouldStandardize",
 		description = "Should the data be standardized?", commandLineParamName = "standardize",
-		commandLineParamSynopsis = "-standardize", displayOrder = 4
+		commandLineParamSynopsis = "-standardize", commandLineParamIsFlag = true, displayOrder = 4
 	)
 	public boolean getShouldStandardize() {
 		return m_shouldStandardize;
@@ -133,7 +144,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	@OptionMetadata(
 		displayName = "shouldBinarize",
 		description = "Should nominal attributes be binarized?", commandLineParamName = "binarize",
-		commandLineParamSynopsis = "-binarize", displayOrder = 4
+		commandLineParamSynopsis = "-binarize", commandLineParamIsFlag = true, displayOrder = 4
 	)
 	public boolean getShouldBinarize() {
 		return m_shouldBinarize;
@@ -146,7 +157,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	@OptionMetadata(
 		displayName = "shouldImpute",
 		description = "Should missing values be imputed (with mean imputation)?", commandLineParamName = "impute",
-		commandLineParamSynopsis = "-impute", displayOrder = 4
+		commandLineParamSynopsis = "-impute", commandLineParamIsFlag = true, displayOrder = 4
 	)	
 	public boolean getShouldImpute() {
 		return m_shouldImpute;
@@ -174,6 +185,18 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	public String getModelString() {
 		return m_modelString;
 	}
+	
+	private void executeScript(String driver, String stdErrMessage) throws Exception {
+		List<String> out = m_session.executeScript(driver, getDebug());
+		if( getDebug() && stdErrMessage != null) {
+			if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+				throw new Exception(stdErrMessage + "\n" + out.get(1));
+			}
+		}
+		if( getPrintStdOut() && !out.get(0).equals("") ) {
+			System.err.println( "Standard out:\n" + out.get(0) );
+		}
+	}
 
 	@Override
 	public void buildClassifier(Instances data) throws Exception {
@@ -193,28 +216,19 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 			if(parentDir != null) {
 				String driver = "import os\nos.chdir('" + parentDir + "')\n";
 				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
-				List<String> out = m_session.executeScript(driver, getDebug());
-				if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
-					throw new Exception("An error happened while trying to change the working directory:\n" + out.get(1));
-				}
+				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
 			
 	    	// now load training and testing class
 	    	String driver = "import imp\n"
 	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
-	    	List<String> out = m_session.executeScript(driver, getDebug());
-		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
-		    	throw new Exception( "An error happened while trying to load the Python script:\n" + out.get(1) );
-		    }    	
+	    	executeScript(driver, "An error happened while trying to load the Python script:"); 	
 	    	
 	    	data = Utility.preProcessData(data, getShouldImpute(),
 	    			getShouldBinarize(), getShouldStandardize());		
 			
-			m_argsScript = Utility.createArgsScript(data, getArguments(), m_session, true);
-		    out = m_session.executeScript(m_argsScript, getDebug());
-		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
-		    	throw new Exception( "An error happened while trying to create the args variable:\n" + out.get(1) );
-		    }
+			m_argsScript = Utility.createArgsScript(data, getArguments(), m_session, true);		
+			executeScript(m_argsScript, "An error happened while trying to create the args variable:");
 		    
 		    /*
 		     * Ok, push the training data to Python. The variables will be called
@@ -224,21 +238,15 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 		    m_session.executeScript("args['X_train'] = X\nargs['y_train']=Y\n", getDebug());
 		    
 		    // build the classifier
-		    driver = "model = cls.train(args)";
-		    out = m_session.executeScript(driver, getDebug());
-		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
-		    	throw new Exception( "An error happened while executing the train() function:\n" + out.get(1) );
-		    }
+		    driver = "model = cls.train(args)";	    
+		    executeScript(driver, "An error happened while executing the train() function:");
 		    
 		    // save model parameters
 		    m_pickledModel = m_session.getVariableValueFromPythonAsPickledObject("model", getDebug());
 		    
 		    // get model description
 		    driver = "model_description = cls.describe(args, model)";
-		    out = m_session.executeScript(driver, getDebug());
-		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
-		    	throw new Exception( "An error happened while executing the describe() function:\n" + out.get(1) );
-		    }
+		    executeScript(driver, "An error happened while executing the describe() function:");
 		    
 		    m_modelString = m_session.getVariableValueFromPythonAsPlainString("model_description", getDebug());
 	    
@@ -282,10 +290,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 			if(parentDir != null) {
 				String driver = "import os\nos.chdir('" + parentDir + "')\n";
 				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
-				List<String> out = m_session.executeScript(driver, getDebug());
-				if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
-					throw new Exception("An error happened while trying to change the working directory:\n" + out.get(1));
-				}
+				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
 			
 	    	Utility.preProcessData(insts, getShouldImpute(), getShouldBinarize(), getShouldStandardize());
@@ -301,15 +306,8 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 		    
 	    	String driver = "import imp\n"
 	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
-	    	List<String> out = m_session.executeScript(driver, getDebug());
-		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
-		    	throw new Exception( "An error happened while trying to load the Python script:\n" + out.get(1) );
-		    }
-	        
-		    out = m_session.executeScript(m_argsScript, getDebug());
-		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
-		    	throw new Exception( "An error happened while trying to create the args variable:\n" + out.get(1) );
-		    }
+	    	executeScript(driver, "An error happened while trying to load the Python script:");
+	    	executeScript(m_argsScript, "An error happened while trying to create the args variable:" );
 		    
 		    /*
 		     * Push the test data. These will also be X and Y, so have a
@@ -324,11 +322,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 		    m_session.setPythonPickledVariableValue("best_weights", m_pickledModel, getDebug());	     
 		    
 		    driver = "preds = cls.test(args, best_weights)";
-		    
-		    out = m_session.executeScript(driver, getDebug());
-		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
-		    	throw new Exception( "An error happened while executing the test() function:\n" + out.get(1) );
-		    }
+		    executeScript(driver, "An error happened while executing the test() function:");
 		    
 			List<Object> preds = 
 		    	(List<Object>) m_session.getVariableValueFromPythonAsJson("preds", getDebug());
