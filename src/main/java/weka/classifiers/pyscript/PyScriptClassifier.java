@@ -188,7 +188,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	
 	private void executeScript(String driver, String stdErrMessage) throws Exception {
 		List<String> out = m_session.executeScript(driver, getDebug());
-		if( getDebug() && stdErrMessage != null) {
+		if( stdErrMessage != null) {
 			if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
 				throw new Exception(stdErrMessage + "\n" + out.get(1));
 			}

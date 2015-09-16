@@ -1,5 +1,5 @@
 from sklearn.ensemble import RandomForestClassifier
-from pyscript.pyscript import ArffToPickle
+from pyscript.pyscript import ArffToArgs
 
 def train(args):
     X_train = args["X_train"]
@@ -16,10 +16,11 @@ def test(args, model):
     return model.predict_proba(X_test).tolist()
 
 if __name__ == '__main__':
-    x = ArffToPickle()
+    x = ArffToArgs()
     x.set_input("../datasets/iris.arff")
     x.set_class_index("last")
-    args = x.get_pkl()
+    args = x.get_args()
     args["num_trees"] = 10
     rf = train(args)
     print describe(args, rf)
+    x.close()

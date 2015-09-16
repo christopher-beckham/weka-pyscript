@@ -3,6 +3,7 @@ from theano import tensor as T
 import numpy as np
 import gzip
 import cPickle as pickle
+from pyscript.pyscript import ArffToArgs, load_pkl
 
 def train(args):
 
@@ -72,8 +73,17 @@ def test(args, weights):
 
 
 if __name__ == '__main__':
-    print "Supported args:"
-    print "alpha (learning rate)"
-    print "  e.g. alpha=0.01"
-    print "epsilon (stopping criterion)"
-    print "  e.g. epsilon=0.00001"
+
+
+    x = ArffToArgs()
+    x.set_input("../datasets/diabetes_numeric.arff")
+    x.set_class_index("last")
+    x.set_standardize(True)
+    args = x.get_args()
+    print args
+    args["alpha"] = 0.01
+    args["epsilon"] = 1e-6
+    model = train(args)
+    print describe(args, model)
+    x.close()
+    #print load_pkl("../datasets/diabetes_numeric.pkl.gz")
