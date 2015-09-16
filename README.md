@@ -30,10 +30,16 @@ java weka.core.WekaPackageManager -install-package pyScript.zip
 If the package installed successfully, you should now be able to run it from WEKA, either from the command-line or the GUI. A quick way to check if the classifier can be invoked is to simply run
 
 ```
-java weka.Run weka.classifiers.pyscript.PyScriptClassifier
+java weka.Run .PyScriptClassifier
 ```
 
 and see if WEKA recognises it. You should get an error like "Weka exception: No training file and no object input file given.".
+
+Also make sure to install the `pyscript` Python module by running:
+
+```
+python setup.py install
+```
 
 Examples
 ---
