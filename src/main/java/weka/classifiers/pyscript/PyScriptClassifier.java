@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -20,6 +21,7 @@ import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Option;
 import weka.core.OptionHandler;
+import weka.core.OptionMetadata;
 import weka.core.Randomizable;
 import weka.core.TechnicalInformation;
 import weka.core.TechnicalInformation.Field;
@@ -33,6 +35,7 @@ import weka.filters.unsupervised.attribute.NominalToBinary;
 import weka.filters.unsupervised.attribute.Remove;
 import weka.filters.unsupervised.attribute.ReplaceMissingValues;
 import weka.filters.unsupervised.attribute.Standardize;
+import weka.pyscript.Utility;
 import weka.python.PythonSession;
 
 /**
@@ -40,64 +43,57 @@ import weka.python.PythonSession;
  * training and testing instances (in the form of Numpy arrays)
  * and return predictions.
  * @author cjb60
- *
  */
-public class PyScriptClassifier extends AbstractClassifier implements
-	  BatchPredictor, CapabilitiesHandler, Randomizable, TechnicalInformationHandler, OptionHandler {
+public class PyScriptClassifier extends AbstractClassifier implements BatchPredictor,
+	TechnicalInformationHandler {
 	
 	private static final long serialVersionUID = 2846535265976949760L;
 	
-	/**
-	 * Default values for the parameters.
-	 */
-	private final String DEFAULT_PYFILE = "";
-	private final String DEFAULT_TRAIN_PYFILE_PARAMS = 
-			"";
-	private final String DEFAULT_TEST_PYFILE_PARAMS = DEFAULT_TRAIN_PYFILE_PARAMS;
-	
+	private final File DEFAULT_PYFILE = new File( System.getProperty("user.dir") );
+	private final String DEFAULT_TRAIN_PYFILE_PARAMS = "";
 	private final boolean DEFAULT_SHOULD_STANDARDIZE = false;
 	private final boolean DEFAULT_SHOULD_BINARIZE = false;
 	private final boolean DEFAULT_SHOULD_IMPUTE = false;
-	private final boolean DEFAULT_USE_VALIDATION_SET = false;
-	private final int DEFAULT_SEED = 0;
-	private final String DEFAULT_ARGS_DUMP_FILE = "";
 	private final String DEFAULT_PYTHON_COMMAND = "python";
+	private final boolean DEFAULT_PRINT_STDOUT = false;
 	
 	private boolean m_shouldStandardize = DEFAULT_SHOULD_STANDARDIZE;
 	private boolean m_shouldBinarize = DEFAULT_SHOULD_BINARIZE;
 	private boolean m_shouldImpute = DEFAULT_SHOULD_IMPUTE;
-	private boolean m_useValidationSet = DEFAULT_USE_VALIDATION_SET;
-	private int m_seed = DEFAULT_SEED;
-	private String m_argsDumpFile = DEFAULT_ARGS_DUMP_FILE;
 	private String m_pythonCommand = DEFAULT_PYTHON_COMMAND;
-	
-	private Filter m_nominalToBinary = null;
-	private Filter m_standardize = null;
-	private Filter m_replaceMissing = null;
-	private HashMap<String, ArrayList<String>> m_attrEnums = null;
-	
+	private String m_argsScript = null;
+	protected String m_batchPredictSize = "100";
 	private String m_pickledModel = null;
+	private boolean m_printStdOut = DEFAULT_PRINT_STDOUT;
 	
 	private transient PythonSession m_session = null;
 	
 	private String m_modelString = null;
 	
-	private int m_numClasses = 0;
-	private int m_numAttributes = 0;
-	private int m_numInstances = 0;
-	private String m_relationName = "";
-	private String m_className = null;
-	private String[] m_attrNames = null;
-	
 	/** The default Python script to execute */
-	private String m_pyTrainFile = DEFAULT_PYFILE;
+	private File m_pyTrainFile = DEFAULT_PYFILE;
 	
 	/** If there are any parameters to pass to the training script */
-	private String m_pyTrainFileParams = DEFAULT_TRAIN_PYFILE_PARAMS;
+	private String m_customArgs = DEFAULT_TRAIN_PYFILE_PARAMS;
 	
-	/** If there are any parameters to pass to the testing script */
-	private String m_pyTestFileParams = DEFAULT_TEST_PYFILE_PARAMS;
+	@OptionMetadata(
+	   displayName = "printStdOut", commandLineParamName = "stdout",
+	   description = "Print standard out from Python script to stderr?",
+	   commandLineParamSynopsis = "-stdout", commandLineParamIsFlag = true, displayOrder = 4
+	)
+	public boolean getPrintStdOut() {
+		return m_printStdOut;
+	}
 	
+	public void setPrintStdOut(boolean b) {
+		m_printStdOut = b;
+	}
+	
+	@OptionMetadata(
+		displayName = "pythonCommand",
+		description = "Python executable command", commandLineParamName = "cmd",
+		commandLineParamSynopsis = "-cmd <python executable>", displayOrder = 4
+	)
 	public String getPythonCommand() {
 		return m_pythonCommand;
 	}
@@ -106,42 +102,37 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_pythonCommand = s;
 	}
 	
-	public String argsDumpFileTipText() {
-		return "args dump";
-	}
-	
-	public String getArgsDumpFile() {
-		return m_argsDumpFile;
-	}
-	
-	public void setArgsDumpFile(String s) {
-		m_argsDumpFile = s;
-	}
-	
-	public String getPythonFile() {
+	@OptionMetadata(
+		displayName = "pythonFile",
+		description = "Path to Python script", commandLineParamName = "script",
+		commandLineParamSynopsis = "-script <path to script>", displayOrder = 4
+	)
+	public File getPythonFile() {
 		return m_pyTrainFile;
 	}
 	
-	public void setPythonFile(String pyFile) {
+	public void setPythonFile(File pyFile) {
 		m_pyTrainFile = pyFile;
 	}
 	
-	public String getTrainPythonFileParams() {
-		return m_pyTrainFileParams;
+	@OptionMetadata(
+		displayName = "arguments",
+		description = "Arguments to pass to the script", commandLineParamName = "args",
+		commandLineParamSynopsis = "-args <arguments>", displayOrder = 4
+	)	
+	public String getArguments() {
+		return m_customArgs;
 	}
 	
-	public void setTrainPythonFileParams(String pyTrainFileParams) {
-		m_pyTrainFileParams = pyTrainFileParams;
+	public void setArguments(String pyTrainFileParams) {
+		m_customArgs = pyTrainFileParams;
 	}
 	
-	public String getTestPythonFileParams() {
-		return m_pyTestFileParams;
-	}
-	
-	public void setTestPythonFileParams(String pyTestFileParams) {
-		m_pyTestFileParams = pyTestFileParams;
-	}
-	
+	@OptionMetadata(
+		displayName = "shouldStandardize",
+		description = "Should the data be standardized?", commandLineParamName = "standardize",
+		commandLineParamSynopsis = "-standardize", commandLineParamIsFlag = true, displayOrder = 4
+	)
 	public boolean getShouldStandardize() {
 		return m_shouldStandardize;
 	}
@@ -150,6 +141,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_shouldStandardize = b;
 	}
 	
+	@OptionMetadata(
+		displayName = "shouldBinarize",
+		description = "Should nominal attributes be binarized?", commandLineParamName = "binarize",
+		commandLineParamSynopsis = "-binarize", commandLineParamIsFlag = true, displayOrder = 4
+	)
 	public boolean getShouldBinarize() {
 		return m_shouldBinarize;
 	}
@@ -158,6 +154,11 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_shouldBinarize = b;
 	}
 	
+	@OptionMetadata(
+		displayName = "shouldImpute",
+		description = "Should missing values be imputed (with mean imputation)?", commandLineParamName = "impute",
+		commandLineParamSynopsis = "-impute", commandLineParamIsFlag = true, displayOrder = 4
+	)	
 	public boolean getShouldImpute() {
 		return m_shouldImpute;
 	}
@@ -166,162 +167,68 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		m_shouldImpute = b;
 	}
 	
-	public boolean getUseValidationSet() {
-		return m_useValidationSet;
+	@OptionMetadata(
+		displayName = "batchSize",
+		description = "How many instances should be passed to the model at testing time", commandLineParamName = "batch",
+		commandLineParamSynopsis = "-batch <batch size>", displayOrder = 4
+	)		
+	@Override
+	public String getBatchSize() {
+		return m_batchPredictSize;
+	}	
+	
+	@Override
+	public void setBatchSize(String size) {
+		m_batchPredictSize = size;
 	}
 	
-	public void setUseValidationSet(boolean b) {
-		m_useValidationSet = b;
+	public String getModelString() {
+		return m_modelString;
 	}
 	
-	private void pushArgs(PythonSession session, boolean trainMode) throws Exception {
-		
-		// pass general information related to the training data
-	    session.executeScript("args['num_classes'] = " + m_numClasses, getDebug());
-	    session.executeScript("args['num_attributes'] = " + m_numAttributes, getDebug());
-	    session.executeScript("args['num_instances'] = " + m_numInstances, getDebug());
-	    session.executeScript("args['relation_name'] = " +
-	    		"'" + m_relationName.replace("'", "") + "'", getDebug());
-	    
-	    // pass attribute information
-	    StringBuilder attrNames = new StringBuilder("args['attributes'] = [");
-	    for(int i = 0; i < m_numAttributes; i++) {
-	    	String attrName = m_attrNames[i];
-	    	attrName = attrName.replace("'", "").replace("\"", "");
-	    	attrNames.append( "'" + attrName + "'" );
-	    	if(i != m_numAttributes-1) {
-	    		attrNames.append(",");
-	    	}
-	    }
-	    attrNames.append("]");
-	    session.executeScript( attrNames.toString(), getDebug());
-	    
-	    // pass attribute enums
-	    StringBuilder attrValues = new StringBuilder("args['attr_values'] = dict()\n");
-	    for(String key : m_attrEnums.keySet()) {
-	    	StringBuilder vector = new StringBuilder();
-	    	vector.append("[");
-	    	ArrayList<String> vals = m_attrEnums.get(key);
-	    	for(String val : vals) {
-	    		vector.append( "'" + val + "'" + "," );
-	    	}
-	    	vector.append("]");
-	    	attrValues.append("args['attr_values']['" + 
-	    		key.replace("'", "\\'").replace("\n", "\\n") + "'] = " + vector.toString() );
-	    }
-	    session.executeScript(attrValues.toString(), getDebug());
-	    
-	    // pass class name
-	    String classAttr = m_className.replace("'", "").replace("\"", "");
-	    session.executeScript( "args['class'] = '" + classAttr.replace("'", "") + "'", getDebug());    
-	    
-	    // pass custom parameters from -xp or -yp
-	    String customParams = null;
-	    if(trainMode) {
-	    	customParams = getTrainPythonFileParams();
-	    } else {
-	    	customParams = getTestPythonFileParams();
-	    }
-	    if( !customParams.equals("") ) {
-		    String[] extraParams = customParams.split(",");
-		    for(String param : extraParams) {
-		    	String[] paramSplit = param.split("=");
-		    	session.executeScript("args[" + paramSplit[0] + "] = " + paramSplit[1], getDebug());
-		    }
-	    }
-	}
-	
-	/**
-	 * Write out the args object to a gzipped pickle
-	 * for debugging purposes.
-	 * @param trainMode if true, the filename will end in ".train.pkl.gz",
-	 * else ".test.pkl.gz"
-	 * @throws WekaException
-	 */
-	public void pickleArgs(boolean trainMode) throws WekaException {
-	    // if args dump is set, then save it out to file
-	    if( !getArgsDumpFile().equals("") ) {
-	    	// see if file exists, if it does then append a number to it
-	    	// e.g. if mnist.pkl.gz exists, then do mnist.pkl.gz.1
-	    	String currentFilenameTemplate = getArgsDumpFile();
-	    	if(trainMode) {
-	    		currentFilenameTemplate += ".train";
-	    	} else {
-	    		currentFilenameTemplate += ".test";
-	    	}
-	    	
-	    	String currentFilename = currentFilenameTemplate;
-	    	int idx = 0;
-	    	while(true) {
-	    		if( new File(currentFilename).exists() ) {
-	    			currentFilename = currentFilenameTemplate + "." + idx;
-	    			idx += 1;
-	    		} else {
-	    			break;
-	    		}
-	    	}
-	    	StringBuilder sb = new StringBuilder();
-	    	sb.append("import gzip\nimport cPickle as pickle\n");
-	    	sb.append("_g = gzip.open('" + currentFilename + "', 'wb')\n");
-	    	sb.append("pickle.dump(args, _g, pickle.HIGHEST_PROTOCOL)\n");
-	    	sb.append("_g.close()\n");
-	    	m_session.executeScript(sb.toString(), getDebug());
-	    }
+	private void executeScript(String driver, String stdErrMessage) throws Exception {
+		List<String> out = m_session.executeScript(driver, getDebug());
+		if( stdErrMessage != null) {
+			if(out.get(1).contains(Utility.TRACEBACK_MSG)) {
+				throw new Exception(stdErrMessage + "\n" + out.get(1));
+			}
+		}
+		if( getPrintStdOut() && !out.get(0).equals("") ) {
+			System.err.println( "Standard out:\n" + out.get(0) );
+		}
 	}
 
 	@Override
-	public void buildClassifier(Instances data) {
+	public void buildClassifier(Instances data) throws Exception {
 		
 		try {
 		
 			// see if the python file exists
-			if( ! new File(getPythonFile()).exists() ) {
+			if( !getPythonFile().exists() ) {
 				throw new FileNotFoundException( getPythonFile() + " doesn't exist!");
 			}
 			
-			initPythonSession();
-		    		
-			/*
-			 * Prepare training data for script
-			 */
-		    if( getShouldImpute() ) {
-		    	m_replaceMissing = new ReplaceMissingValues();
-				m_replaceMissing.setInputFormat(data);
-				data = Filter.useFilter(data, m_replaceMissing);
-		    }
-			if( getShouldBinarize() ) {
-				m_nominalToBinary = new NominalToBinary();
-		    	m_nominalToBinary.setInputFormat(data);
-		    	data = Filter.useFilter(data, m_nominalToBinary);
-			}
-			if( getShouldStandardize() ) {
-				m_standardize = new Standardize();
-				m_standardize.setInputFormat(data);
-				data = Filter.useFilter(data, m_standardize);
+			m_session = Utility.initPythonSession( this, getPythonCommand(), getDebug() );
+			
+			// set the working directory of the python vm to that of the script
+			String parentDir = getPythonFile().getAbsoluteFile().getParent();
+			String scriptName = getPythonFile().getName();
+			if(parentDir != null) {
+				String driver = "import os\nos.chdir('" + parentDir + "')\n";
+				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
+				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
 			
-			Instances validData = null;
-		    
-		    /*
-		     * Ok, split the data up into a training set and
-		     * validation set. Whatever the training set is now,
-		     * 75% of it will be training and 25% will be valid.
-		     */	    
-			if( getUseValidationSet() ) {
-				System.err.println("Use validation set");
-			    Filter stratifiedFolds = new StratifiedRemoveFolds();
-			    stratifiedFolds.setInputFormat(data);
-			    // seed = 0, invert = true, num folds = 4, fold number = 1
-			    stratifiedFolds.setOptions(new String[] {"-S", ""+getSeed(),  "-V",  "-N","4",  "-F","1" } );
-			    data = Filter.useFilter(data, stratifiedFolds);
-			    // this time, don't invert the selection
-			    stratifiedFolds.setOptions( new String[] {"-S",""+getSeed(),  "-N","4",  "-F","1" } );
-			    validData = Filter.useFilter(data, stratifiedFolds);
-			} else {
-				//;
-			}
-		    
-		    m_session.executeScript("args = dict()", getDebug());
+	    	// now load training and testing class
+	    	String driver = "import imp\n"
+	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
+	    	executeScript(driver, "An error happened while trying to load the Python script:"); 	
+	    	
+	    	data = Utility.preProcessData(data, getShouldImpute(),
+	    			getShouldBinarize(), getShouldStandardize());		
+			
+			m_argsScript = Utility.createArgsScript(data, getArguments(), m_session, true);		
+			executeScript(m_argsScript, "An error happened while trying to create the args variable:");
 		    
 		    /*
 		     * Ok, push the training data to Python. The variables will be called
@@ -330,212 +237,63 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    m_session.instancesToPythonAsScikitLearn(data, "train", false);
 		    m_session.executeScript("args['X_train'] = X\nargs['y_train']=Y\n", getDebug());
 		    
-		    /*
-		     * Push the validation data.
-		     */
-		    if( getUseValidationSet() ) {
-		    	m_session.instancesToPythonAsScikitLearn(validData, "valid", false);
-		    	m_session.executeScript("args['X_valid'] = X\nargs['y_valid']=Y\n", getDebug());
-		    }
-		    
-		    //System.out.format("train, valid = %s, %s\n",
-		    //		m_trainingData.numInstances(), m_validData.numInstances());
-		    
-		    m_numClasses = data.numClasses();
-		    m_numAttributes = data.numAttributes() - 1;
-		    m_numInstances = data.numInstances();
-		    m_relationName = data.relationName();
-		    m_className = data.classAttribute().name();
-		    m_attrNames = new String[ data.numAttributes() - 1 ];
-		    m_attrEnums = new HashMap<String, ArrayList<String> >();
-		    for(int i = 0; i < data.numAttributes()-1; i++) {
-		    	m_attrNames[i] = data.attribute(i).name();
-		    	
-		    	if( data.attribute(i).isNominal() || data.attribute(i).isString() ) {
-			    	Enumeration<Object> en = data.attribute(i).enumerateValues();
-			    	ArrayList<String> strs = new ArrayList<String>(data.attribute(i).numValues());
-			    	while(en.hasMoreElements()) {
-			    		strs.add( (String) en.nextElement() );
-			    	}    	
-			    	m_attrEnums.put(m_attrNames[i], strs);
-		    	}
-		    }
-	
-		    pushArgs(m_session, true);
-		    
-		    pickleArgs(true);
-		    
-		    //System.out.println("Number of classes: " + m_numClasses);
-		    //System.out.println("Number of attributes: " + m_numAttributes);
-		    //System.out.println("Number of instances: " + m_numInstances);
-		    
 		    // build the classifier
-		    String driver = "best_weights = cls.train(args)";
-		    List<String> trainOutAndErr = m_session.executeScript(driver, getDebug());
+		    driver = "model = cls.train(args)";	    
+		    executeScript(driver, "An error happened while executing the train() function:");
 		    
 		    // save model parameters
-		    m_pickledModel = m_session.getVariableValueFromPythonAsPickledObject("best_weights", getDebug());
+		    m_pickledModel = m_session.getVariableValueFromPythonAsPickledObject("model", getDebug());
 		    
 		    // get model description
-		    driver = "model_desc = cls.describe(args, best_weights)";
-		    m_session.executeScript(driver, getDebug());
-		    m_modelString = m_session.getVariableValueFromPythonAsPlainString("model_desc", getDebug());
-		    //System.out.println("Model string:" + m_modelString);
+		    driver = "model_description = cls.describe(args, model)";
+		    executeScript(driver, "An error happened while executing the describe() function:");
 		    
-		    //PythonSession.releaseSession(this);
+		    m_modelString = m_session.getVariableValueFromPythonAsPlainString("model_description", getDebug());
 	    
 		} catch(Exception ex) {
 			ex.printStackTrace();
 		} finally {
-			closePythonSession();
+			Utility.closePythonSession(this);
 		}
 
 	}
-
-	@Override
-	public void setBatchSize(String size) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public String getBatchSize() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
-	private void initPythonSession() throws Exception {
-	    if (!PythonSession.pythonAvailable()) {
-	        // try initializing
-	        if (!PythonSession.initSession( getPythonCommand(), getDebug())) {
-	          String envEvalResults = PythonSession.getPythonEnvCheckResults();
-	          throw new Exception("Was unable to start python environment: "
-	            + envEvalResults);
-	        } else {
-	        	// success
-	        }
-	    }
-    	
-    	// success!
-    	if(m_session == null) {
-    		m_session = PythonSession.acquireSession(this);
-    		
-    		//System.err.println("This should only run once per x-val");
-    	
-	    	// now load training and testing class
-	    	String driver = "import imp\n"
-	    			+ "cls = imp.load_source('cls','" + getPythonFile() + "')\n";
-	    	m_session.executeScript(driver, getDebug());
-    	}
-	    
-	}
-	
-	private void closePythonSession() {
-		PythonSession.releaseSession(this);
-	}
 	
 	@Override
-	@SuppressWarnings("unchecked")
 	public double[] distributionForInstance(Instance inst)
-			throws Exception {
-		
-		System.out.println("distributionForInstance");
-		
-		Instances insts = new Instances(inst.dataset());
-		
-		return distributionsForInstances(insts)[0];
-		
-	}
-	
-	@Override
-	public void setOptions(String[] options) throws Exception {
-		
-		String tmp = Utils.getOption("pc", options);
-		if(tmp.length() != 0) {
-			setPythonCommand(tmp);
-		}
-		
-		tmp = Utils.getOption("fn", options);
-		if(tmp.length() != 0) { 
-			setPythonFile(tmp);
-		}
-		
-		tmp = Utils.getOption("xp", options);
-		setTrainPythonFileParams(tmp);
-
-		tmp = Utils.getOption("yp", options);
-		setTestPythonFileParams(tmp);
-		
-		setShouldImpute( Utils.getFlag("im", options) );
-		setShouldBinarize( Utils.getFlag("bn", options) );
-		setShouldStandardize( Utils.getFlag("sd", options) );
-		
-		setUseValidationSet( Utils.getFlag("vs", options) );
-		
-		tmp = Utils.getOption("df", options);
-		setArgsDumpFile(tmp);
-		
-		super.setOptions(options);
-	}
-	
-	@Override
-	public String[] getOptions() {
-		Vector<String> result = new Vector<String>();
-		if( !getPythonCommand().equals("") ) {
-			result.add("-pc");
-			result.add( "" + getPythonCommand() );
-		}
-		if( !getPythonFile().equals("") ) {
-			result.add("-fn");
-			result.add( "" + getPythonFile() );
-		}		
-		if( !getTrainPythonFileParams().equals("") ) {
-			result.add("-xp");
-			result.add( "" + getTrainPythonFileParams() );
-		}	
-		if( !getTestPythonFileParams().equals("") ) {
-			result.add("-yp");
-			result.add( "" + getTestPythonFileParams() );
-		}		
-		if( getShouldImpute() ) {
-			result.add("-im");
-		}
-		if( getShouldBinarize() ) {
-			result.add("-bn");
-		}
-		if( getShouldStandardize() ) {
-			result.add("-sd");
-		}
-		if( getUseValidationSet() ) {
-			result.add("-vs");
-		}		
-		if( !getArgsDumpFile().equals("") ) {
-			result.add("-df");
-			result.add( "" + getArgsDumpFile() );
-		}		
-		Collections.addAll(result, super.getOptions());
-	    return result.toArray(new String[result.size()]);
-	}
+			throws Exception {	
+		Instances insts = new Instances(inst.dataset(), 0);
+	    insts.add(inst);		
+		return distributionsForInstances(insts)[0];		
+	}	
 
 	@Override
 	public double[][] distributionsForInstances(Instances insts)
 			throws Exception {
 		
-		double[][] dists = new double[insts.numInstances()][insts.numClasses()];
-		
-	    initPythonSession();
-	    
 	    try {
+		
+			//System.out.format("test = %s\n", insts.numInstances());
+			//System.out.format("batch size = %s\n", getBatchSize());
+			
+			double[][] dists = new double[insts.numInstances()][insts.numClasses()];
+			
+		    m_session = Utility.initPythonSession(this, getPythonCommand(), getDebug());
 	    	
-		    if( getShouldImpute() ) {
-		    	insts = Filter.useFilter(insts, m_replaceMissing);
-		    }
-			if( getShouldBinarize() ) {
-				insts = Filter.useFilter(insts, m_nominalToBinary);
+			// see if the python file exists
+			if( !getPythonFile().exists() ) {
+				throw new FileNotFoundException( getPythonFile() + " doesn't exist!");
 			}
-			if( getShouldStandardize() ) {
-				insts = Filter.useFilter(insts, m_standardize);
+	    	
+			// set the working directory of the python vm to that of the script
+			String parentDir = getPythonFile().getAbsoluteFile().getParent();
+			String scriptName = getPythonFile().getName();
+			if(parentDir != null) {
+				String driver = "import os\nos.chdir('" + parentDir + "')\n";
+				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
+				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
+			
+	    	Utility.preProcessData(insts, getShouldImpute(), getShouldBinarize(), getShouldStandardize());
 	        
 	        int numClasses = insts.numClasses();
 	        
@@ -546,10 +304,10 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	        insts = Filter.useFilter(insts, r);
 	        insts.setClassIndex(-1);
 		    
-		    m_session.executeScript("args = dict()", getDebug());
-		    pushArgs(m_session, false);
-		    
-		    pickleArgs(false);
+	    	String driver = "import imp\n"
+	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
+	    	executeScript(driver, "An error happened while trying to load the Python script:");
+	    	executeScript(m_argsScript, "An error happened while trying to create the args variable:" );
 		    
 		    /*
 		     * Push the test data. These will also be X and Y, so have a
@@ -561,13 +319,10 @@ public class PyScriptClassifier extends AbstractClassifier implements
 		    /*
 		     * Push the weights of the saved model over.
 		     */
-		    m_session.setPythonPickledVariableValue("best_weights", m_pickledModel, getDebug());
+		    m_session.setPythonPickledVariableValue("best_weights", m_pickledModel, getDebug());	     
 		    
-		    System.out.format("test = %s\n", insts.numInstances());	    
-		    
-		    String driver = "preds = cls.test(args, best_weights)";
-		    
-		    m_session.executeScript(driver, getDebug());
+		    driver = "preds = cls.test(args, best_weights)";
+		    executeScript(driver, "An error happened while executing the test() function:");
 		    
 			List<Object> preds = 
 		    	(List<Object>) m_session.getVariableValueFromPythonAsJson("preds", getDebug());
@@ -587,7 +342,7 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	    } catch(Exception ex) {
 			ex.printStackTrace();
 		} finally {
-			closePythonSession();
+			Utility.closePythonSession(this);
 		}
 	    
 	    return null;
@@ -597,16 +352,6 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	@Override
 	public String toString() {
 		return m_modelString;
-	}
-
-	@Override
-	public void setSeed(int seed) {
-		m_seed = seed;
-	}
-
-	@Override
-	public int getSeed() {
-		return m_seed;
 	}
 	
 	public String globalInfo() {  
@@ -624,34 +369,8 @@ public class PyScriptClassifier extends AbstractClassifier implements
 	}
 	
 	@Override
-	public Enumeration<Option> listOptions() {
-		Vector<Option> newVector = new Vector<Option>();
-		newVector.addElement(
-			new Option("\tPython script", "pythonFile", 1, "-fn <filename>")
-		);
-		newVector.addElement(
-			new Option("\tTraining arguments", "trainPythonFileParams", 1, "-xp <string>")
-		);
-		newVector.addElement(
-			new Option("\tTesting arguments", "testPythonFileParams", 1, "-yp <string>")
-		);
-		newVector.addElement(
-			new Option("\tShould we binarise nominal attributes?", "shouldBinarize", 0, "-bn")
-		);
-		newVector.addElement(
-			new Option("\tShould we impute missing values with mean?", "shouldImpute", 0, "-im")
-		);
-		newVector.addElement(
-			new Option("\tShould we standardize the attributes?", "shouldStandardize", 0, "-sd")
-		);
-		newVector.addElement(
-			new Option("\tSet aside 25% of training data as validation data?", "useValidationSet", 0, "-vs")
-		);
-		newVector.addElement(
-			new Option("\tSpecify a filename to dump pickled ARFF to (for debugging purposes)", "argsDumpFile", 1, "-df <filename>")
-		);
-		newVector.addAll(Collections.list(super.listOptions()));
-		return newVector.elements();
+	public boolean implementsMoreEfficientBatchPrediction() {
+		return true;
 	}
 	
 	public static void main(String[] argv) {

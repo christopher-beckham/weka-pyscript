@@ -1,8 +1,10 @@
+[![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.29050.svg)](http://dx.doi.org/10.5281/zenodo.29050)
+
 PyScriptClassifier
 ===
 
 This package allows users to construct classifiers with Python scripts for WEKA, given that the
-script conforms to an expected structure.
+script conforms to an expected structure. Get started with your first classifier [here](https://github.com/chrispy645/weka-pyscript/wiki/Getting-started)!
 
 Installation
 ---
@@ -28,7 +30,39 @@ java weka.core.WekaPackageManager -install-package pyScript.zip
 If the package installed successfully, you should now be able to run it from WEKA, either from the command-line or the GUI. A quick way to check if the classifier can be invoked is to simply run
 
 ```
-java weka.Run weka.classifiers.pyscript.PyScriptClassifier
+java weka.Run .PyScriptClassifier
 ```
 
 and see if WEKA recognises it. You should get an error like "Weka exception: No training file and no object input file given.".
+
+Also make sure to install the `pyscript` Python module by running:
+
+```
+python setup.py install
+```
+
+Examples
+---
+
+#### Linear regression
+
+Run a linear regressor on the diabetes dataset.
+
+```
+java weka.Run .PyScriptClassifier \
+  -script scripts/linear-reg.py \
+  -standardize \
+  -t datasets/diabetes_numeric.arff -c last -no-cv
+```
+
+We can pass custom arguments in, such as the learning rate, e.g. by specifying `-args "'alpha'=0.1"`.
+
+### ZeroR
+
+We can also run ZeroR on a nominal dataset such as Iris.
+
+```
+java weka.Run .PyScriptClassifier \
+  -script scripts/zeror.py \
+  -t datasets/iris.arff -c last -no-cv
+```
