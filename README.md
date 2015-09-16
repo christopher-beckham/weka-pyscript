@@ -4,7 +4,7 @@ PyScriptClassifier
 ===
 
 This package allows users to construct classifiers with Python scripts for WEKA, given that the
-script conforms to an expected structure.
+script conforms to an expected structure. Get started with your first classifier [here](https://github.com/chrispy645/weka-pyscript/wiki/Getting-started)!
 
 Installation
 ---
