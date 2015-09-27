@@ -227,7 +227,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	    	data = Utility.preProcessData(data, getShouldImpute(),
 	    			getShouldBinarize(), getShouldStandardize());		
 			
-			m_argsScript = Utility.createArgsScript(data, getArguments(), m_session, true);		
+			m_argsScript = Utility.createArgsScript(data, getArguments(), m_session, getDebug());		
 			executeScript(m_argsScript, "An error happened while trying to create the args variable:");
 		    
 		    /*

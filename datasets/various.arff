@@ -1,0 +1,10 @@
+@relation various
+@attribute x1 numeric
+@attribute x2 {'a','b','c'}
+@attribute x3 {'true','false'}
+@attribute class {'yes','no'}
+@data
+1.5,a,true,no
+?,b,?,yes
+0.5,c,false,yes
+

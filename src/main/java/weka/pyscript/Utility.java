@@ -71,6 +71,8 @@ public class Utility {
 		if( shouldBinarize ) {
 			Filter nominalToBinary = new NominalToBinary();
 	    	nominalToBinary.setInputFormat(data);
+	    	// make resulting binary attrs nominal, not numeric
+	    	nominalToBinary.setOptions(new String[] { "-N" } );
 	    	data = Filter.useFilter(data, nominalToBinary);
 		}
 		if( shouldStandardize ) {
