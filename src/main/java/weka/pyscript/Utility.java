@@ -81,6 +81,10 @@ public class Utility {
 		return data;
 	}
 	
+	private static String escape(String key) {
+		return key.replace("'", "\\'").replace("\n", "\\n");
+	}
+	
 	/**
 	 * Create a script that pushes args to the Python VM
 	 * @param df data frame
@@ -142,17 +146,25 @@ public class Utility {
 	    		vector.append( "'" + val + "'" + "," );
 	    	}
 	    	vector.append("]");
-	    	attrValues.append("args['attr_values']['" + 
-	    		key.replace("'", "\\'").replace("\n", "\\n") + "'] = " + vector.toString() + "\n" );
+	    	attrValues.append("args['attr_values']['" + escape(key) + "'] = " + vector.toString() + "\n" );
 	    }
 	    //session.executeScript(attrValues.toString(), debug);
 	    script.append(attrValues.toString());
 	    
 	    // pass class name
 	    if(df.classIndex() != -1) {
-	    	String classAttr = df.classAttribute().name().replace("'", "").replace("\"", "");
-	    	script.append( "args['class'] = '" + classAttr.replace("'", "") + "'\n");
+	    	String classAttr = escape(df.classAttribute().name());
+	    	script.append( "args['class'] = '" + classAttr + "'\n");
 	    }
+	    
+	    // pass attribute types
+	    StringBuilder attrTypes = new StringBuilder("args['attr_types'] = dict()\n");
+	    for(int i = 0; i < df.numAttributes(); i++) {
+	    	String attrName = df.attribute(i).name();
+	    	String attrType = Attribute.typeToString( df.attribute(i) );
+	    	attrTypes.append( "args['attr_types']['" + escape(attrName) + "'] = '" + attrType + "'\n" );
+	    }
+	    script.append( attrTypes.toString() );
 	    
 	    // custom arguments
 	    if( !customParams.equals("") ) {

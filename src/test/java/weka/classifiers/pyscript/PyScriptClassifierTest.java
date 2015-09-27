@@ -39,7 +39,7 @@ public class PyScriptClassifierTest {
 		System.out.println("testLinearRegressionOnDiabetes()");
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
 		ps.setPythonFile( new File("scripts/linear-reg.py") );
-		ps.setArguments("'alpha'=0.01,'epsilon'=0.0001");
+		ps.setArguments("'alpha'=0.01;'epsilon'=0.0001");
 		DataSource ds = new DataSource("datasets/diabetes_numeric.arff");
 		Instances train = ds.getDataSet();
 		train.setClassIndex( train.numAttributes() - 1 );
@@ -67,6 +67,7 @@ public class PyScriptClassifierTest {
 	public void testExceptionRaiser() throws Exception {
 		System.out.println("testExceptionRaiser()");
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
+		ps.setDebug(true);
 		ps.setPythonFile( new File("scripts/test-exception.py") );
 		DataSource ds = new DataSource("datasets/iris.arff");
 		Instances train = ds.getDataSet();
