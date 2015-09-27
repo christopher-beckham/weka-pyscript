@@ -15,6 +15,7 @@ This package requires the following:
 * The [wekaPython](http://weka.sourceforge.net/packageMetaData/wekaPython/index.html) package written by Mark Hall. This package is actually a wrapper for Scikit-Learn, but it has code that makes it possible to interact with Python scripts.
 * [ant](http://ant.apache.org/) to be able to build the package.
 * Java 8, but 7 could probably work too.
+* (Optional) [Theano](https://github.com/Theano/Theano) to be able to run the linear regression example.
 
 When you have installed both of these, ensure that `wekaPython.jar` is in your `$CLASSPATH` variable. This .jar can be found in the `$WEKA_HOME/packages/wekaPython/` directory. I also assume that you have `weka.jar` in your classpath variable as well.
 
@@ -55,9 +56,17 @@ java weka.Run .PyScriptClassifier \
   -t datasets/diabetes_numeric.arff -c last -no-cv
 ```
 
-We can pass custom arguments in, such as the learning rate, e.g. by specifying `-args "'alpha'=0.1"`.
+We can pass custom arguments in, and in this script two custom arguments can be specified to override the default values: `alpha` (the learning rate), and `epsilon` (early stopping criterion).
 
-### ZeroR
+```
+java weka.Run .PyScriptClassifier \
+  -script scripts/linear-reg.py \
+  -standardize \
+  -args "'alpha'=0.001;'epsilon'=1e-6" \
+  -t datasets/diabetes_numeric.arff -c last -no-cv
+```
+
+#### ZeroR
 
 We can also run ZeroR on a nominal dataset such as Iris.
 
@@ -65,4 +74,15 @@ We can also run ZeroR on a nominal dataset such as Iris.
 java weka.Run .PyScriptClassifier \
   -script scripts/zeror.py \
   -t datasets/iris.arff -c last -no-cv
+```
+
+#### Random forest
+
+A Scikit-Learn random forest can be trained, passing in an argument `num_trees` which specifies how many trees should be used in the ensemble (this is a required argument and is not optional). To do a 10-fold cross-validation on `iris.arff` using 30 trees, we run:
+
+```
+java weka.Run .PyScriptClassifier \
+  -script scripts/scikit-rf.py \
+  -args "'num_trees'=30" \
+  -t datasets/iris.arff
 ```
