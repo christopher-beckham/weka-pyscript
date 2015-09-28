@@ -4,6 +4,8 @@ import cPickle as pickle
 import os
 import sys
 import time
+import tempfile
+import shutil
 
 def load_pkl(filename):
     f = gzip.open(filename)
@@ -32,8 +34,6 @@ class ArffToArgs(object):
         self.impute = "-impute" if b else ""
     def set_input(self, filename):
         self.input = filename
-    def set_output(self, filename):
-        self.output = filename
     def set_debug(self, b):
         assert isinstance(b, bool)
         self.debug = "-debug" if b else ""
@@ -43,23 +43,26 @@ class ArffToArgs(object):
     def get_args(self):
         if self.input == "" or self.class_index == "":
             raise ValueError("Make sure you have used set_input, and set_class_index at least")
-        if self.output == "":
-            self.output = "/tmp/%s_%f.pkl.gz" % ( os.path.basename(self.input), time.time() )
-            driver = ["java", "weka.Run", "weka.pyscript.ArffToPickle",
-                "-i", self.input, "-o", self.output, "-c", self.class_index, self.standardize, self.binarize,
-                self.impute, self.debug
-            ]
-            sys.stderr.write("%s\n" % " ".join(driver))
-            result = call(driver)
-            if result != 0:
-                raise Exception("Error - Java call returned a non-zero value")
-            else:
-                return load_pkl(self.output)
+        self.output = tempfile.gettempdir() + os.path.sep + "%s_%f.pkl.gz" % ( os.path.basename(self.input), time.time() )
+        driver = ["java", "weka.Run", "weka.pyscript.ArffToPickle",
+            "-i", self.input, "-o", self.output, "-c", self.class_index, self.standardize, self.binarize,
+            self.impute, self.debug
+        ]
+        sys.stderr.write("%s\n" % " ".join(driver))
+        result = call(driver)
+        if result != 0:
+            raise Exception("Error - Java call returned a non-zero value")
         else:
             return load_pkl(self.output)
 
+    def save(self, filename):
+        shutil.move(self.output, filename)
+
     def close(self):
-        call(["rm", self.output])
+        try:
+            os.remove(self.output)
+        except OSError:
+            pass
 
 if __name__ == '__main__':
 
