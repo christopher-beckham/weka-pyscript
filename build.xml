@@ -190,6 +190,8 @@
        </fileset>
     </copy>
 
+    <copy file="setup.py" todir="${dist}/${package}" />
+
     <mkdir dir="${dist}/${package}/scripts" />
     <copy todir="${dist}/${package}/scripts" >
       <fileset dir="scripts">
@@ -204,6 +206,14 @@
       <fileset dir="datasets">
         <include name="iris.arff" />
         <include name="diabetes_numeric.arff" />
+      </fileset>
+    </copy>
+
+    <mkdir dir="${dist}/${package}/pyscript" />
+    <copy todir="${dist}/${package}/pyscript" >
+      <fileset dir="pyscript">
+        <include name="pyscript.py" />
+        <include name="__init__.py" />
       </fileset>
     </copy>
 
