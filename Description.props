@@ -3,16 +3,16 @@
 # 
 
 # Package name (required)
-PackageName=pyScript
+PackageName=PyScriptClassifier
 
 # Version (required)
-Version=0.0.1
+Version=0.1.0
 
 #Date
-Date=2015-MM-YY
+Date=28-09-2015
 
 # Title (required)
-Title=Executing arbitrary Python scripts
+Title=PyScriptClassifier
 
 Category=Classification
 
@@ -26,15 +26,15 @@ Maintainer=Christopher Beckham <cjb60 at students dot waikato dot ac dot nz>
 License=GPL 3.0
 
 # Description (required)
-Description=stuff
+Description=WEKA classifier to execute arbitrary Python scripts
 
 # Changes=
 
 # Package URL for obtaining the package archive (required)
-PackageURL=http://localhost/
+PackageURL=http://github.com/chrispy645/weka-pyscript/releases/download/0.1.0/pyScript.zip
 
 # URL for further information
-URL=http://localhost/
+URL=http://github.com/chrispy645/weka-pyscript
 
 # Enhances various other packages ?
 # Enhances=packageName1,packageName2,...
