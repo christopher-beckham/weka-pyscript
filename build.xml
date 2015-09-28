@@ -195,6 +195,7 @@
       <fileset dir="scripts">
         <include name="linear-reg.py" />
         <include name="zeror.py" />
+        <include name="scikit-rf.py" />
       </fileset>
     </copy>
 
