@@ -44,6 +44,7 @@ class ArffToArgs(object):
         if self.input == "" or self.class_index == "":
             raise ValueError("Make sure you have used set_input, and set_class_index at least")
         self.output = tempfile.gettempdir() + os.path.sep + "%s_%f.pkl.gz" % ( os.path.basename(self.input), time.time() )
+        self.output = self.output.replace("\\", "\\\\") # for windows
         driver = ["java", "weka.Run", "weka.pyscript.ArffToPickle",
             "-i", self.input, "-o", self.output, "-c", self.class_index, self.standardize, self.binarize,
             self.impute, self.debug
