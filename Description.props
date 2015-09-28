@@ -31,7 +31,7 @@ Description=WEKA classifier to execute arbitrary Python scripts
 # Changes=
 
 # Package URL for obtaining the package archive (required)
-PackageURL=http://github.com/chrispy645/weka-pyscript/releases/download/0.1.0/pyScript.zip
+PackageURL=http://github.com/chrispy645/weka-pyscript/releases/download/0.1.1/pyScript.zip
 
 # URL for further information
 URL=http://github.com/chrispy645/weka-pyscript
