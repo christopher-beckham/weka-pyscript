@@ -17,11 +17,12 @@ import weka.python.PythonSession;
 public class ArffToPickle implements CommandlineRunnable {
 	
 	private static final String USAGE = "Usage: -i <arff file> -o <destination file> -c <class index> "
-			+ "[-impute] [-binarize] [-standardize] [-debug]";
+			+ "[-cmd <python command>] [-impute] [-binarize] [-standardize] [-debug]";
 	
 	private PythonSession m_session = null;
 	private boolean m_debug = false;
 	
+	private String m_cmd = "python";
 	private String m_filename = null;
 	private String m_dest = null;
 	
@@ -30,6 +31,14 @@ public class ArffToPickle implements CommandlineRunnable {
 	private boolean m_shouldImpute = false;
 	private boolean m_shouldStandardize = false;
 	private boolean m_shouldBinarize = false;
+	
+	public void setPythonCommand(String s) {
+		m_cmd = s;
+	}
+	
+	public String getPythonCommand() {
+		return m_cmd;
+	}
 	
 	public void setFilename(String s) {
 		m_filename = s;
@@ -85,6 +94,11 @@ public class ArffToPickle implements CommandlineRunnable {
 			setDest( Utils.getOption("o", options) );
 			setClassIndex( Utils.getOption("c", options) );
 			
+			String cmd = Utils.getOption("cmd", options);
+			if( cmd.length() != 0) {
+				setPythonCommand(cmd);
+			}
+			
 			setShouldImpute( Utils.getFlag("impute", options) );
 			setShouldBinarize( Utils.getFlag("binarize", options) );
 			setShouldStandardize( Utils.getFlag("standardize", options) );
@@ -99,7 +113,7 @@ public class ArffToPickle implements CommandlineRunnable {
 	
 	public void convert() {
 		try {
-			m_session = Utility.initPythonSession(this, "python", m_debug);
+			m_session = Utility.initPythonSession(this, getPythonCommand(), m_debug);
 			
 			DataSource ds = new DataSource(m_filename);
 			Instances instances = ds.getDataSet();
@@ -127,7 +141,11 @@ public class ArffToPickle implements CommandlineRunnable {
 		    m_session.executeScript("args['X_train'] = X\nargs['y_train'] = Y\n", getDebug());
 			
 	    	StringBuilder sb = new StringBuilder();
-	    	sb.append("import gzip\nimport cPickle as pickle\n");
+	    	sb.append("import gzip\n");
+	    	sb.append("try:\n");
+	    	sb.append("  import cPickle as pickle\n");
+	    	sb.append("except ImportError:\n");
+	    	sb.append("  import pickle\n");
 	    	sb.append("_g = gzip.open('" + m_dest.replace("'","\\'") + "', 'wb')\n");
 	    	sb.append("pickle.dump(args, _g, pickle.HIGHEST_PROTOCOL)\n");
 	    	sb.append("_g.close()\n");

@@ -1,3 +1,4 @@
+from __future__ import print_function
 from sklearn.ensemble import RandomForestClassifier
 from pyscript.pyscript import ArffToArgs
 
@@ -22,5 +23,5 @@ if __name__ == '__main__':
     args = x.get_args()
     args["num_trees"] = 10
     rf = train(args)
-    print describe(args, rf)
+    print( describe(args, rf) )
     x.close()

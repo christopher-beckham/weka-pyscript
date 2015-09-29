@@ -1,8 +1,15 @@
+from __future__ import print_function
+
 import theano
 from theano import tensor as T
 import numpy as np
 import gzip
-import cPickle as pickle
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 from pyscript.pyscript import ArffToArgs, load_pkl
 
 def train(args):
@@ -38,7 +45,7 @@ def train(args):
     prev_loss = train(X_train, y_train)
     for epoch in range(0, 100000):
         this_loss = train(X_train, y_train)
-        print this_loss
+        print(this_loss)
         if abs(this_loss - prev_loss) < epsilon:
             break
         prev_loss = this_loss
@@ -74,16 +81,15 @@ def test(args, weights):
 
 if __name__ == '__main__':
 
-
     x = ArffToArgs()
     x.set_input("../datasets/diabetes_numeric.arff")
     x.set_class_index("last")
     x.set_standardize(True)
     args = x.get_args()
-    print args
+    print(args)
     args["alpha"] = 0.01
     args["epsilon"] = 1e-6
     model = train(args)
-    print describe(args, model)
+    print(describe(args, model))
     x.close()
     #print load_pkl("../datasets/diabetes_numeric.pkl.gz")
