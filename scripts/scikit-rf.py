@@ -6,7 +6,7 @@ def train(args):
     X_train = args["X_train"]
     y_train = args["y_train"].flatten()
     num_trees = args["num_trees"] if "num_trees" in args else 10
-    rf = RandomForestClassifier(n_estimators=num_trees)
+    rf = RandomForestClassifier(n_estimators=num_trees, random_state=0)
     rf = rf.fit(X_train, y_train)
     return rf
 
