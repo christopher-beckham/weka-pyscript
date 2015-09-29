@@ -25,7 +25,7 @@ public class PyScriptClassifierTest {
 		System.out.println("testRandomForestOnDiabetes()");
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
 		ps.setPythonFile( new File("scripts/scikit-rf.py") );
-		ps.setArguments("'num_trees'=10");
+		ps.setArguments("num_trees=10");
 		DataSource ds = new DataSource("datasets/diabetes.arff");
 		Instances train = ds.getDataSet();
 		train.setClassIndex( train.numAttributes() - 1 );
@@ -39,7 +39,7 @@ public class PyScriptClassifierTest {
 		System.out.println("testLinearRegressionOnDiabetes()");
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
 		ps.setPythonFile( new File("scripts/linear-reg.py") );
-		ps.setArguments("'alpha'=0.01;'epsilon'=0.0001");
+		ps.setArguments("alpha=0.01;epsilon=0.0001");
 		DataSource ds = new DataSource("datasets/diabetes_numeric.arff");
 		Instances train = ds.getDataSet();
 		train.setClassIndex( train.numAttributes() - 1 );

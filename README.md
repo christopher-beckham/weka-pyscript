@@ -63,7 +63,7 @@ We can pass custom arguments in, and in this script two custom arguments can be 
 java weka.Run .PyScriptClassifier \
   -script scripts/linear-reg.py \
   -standardize \
-  -args "'alpha'=0.001;'epsilon'=1e-6" \
+  -args "alpha=0.001;epsilon=1e-6" \
   -t datasets/diabetes_numeric.arff -c last -no-cv
 ```
 
@@ -84,6 +84,6 @@ A Scikit-Learn random forest can be trained, passing in an argument `num_trees` 
 ```
 java weka.Run .PyScriptClassifier \
   -script scripts/scikit-rf.py \
-  -args "'num_trees'=30" \
+  -args "num_trees=30" \
   -t datasets/iris.arff
 ```

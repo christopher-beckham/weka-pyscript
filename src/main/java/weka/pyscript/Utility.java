@@ -173,7 +173,7 @@ public class Utility {
 		    String[] extraParams = customParams.split(";");
 		    for(String param : extraParams) {
 		    	String[] paramSplit = param.split("=");
-		    	script.append("args[" + paramSplit[0] + "] = " + paramSplit[1] + "\n");
+		    	script.append("args['" + paramSplit[0] + "'] = " + paramSplit[1] + "\n");
 		    }
 	    }
 	    
