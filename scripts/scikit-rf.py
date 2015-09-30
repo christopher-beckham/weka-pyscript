@@ -2,9 +2,7 @@ from __future__ import print_function
 from sklearn.ensemble import RandomForestClassifier
 from pyscript.pyscript import ArffToArgs, uses
 
-use_vars = ["num_trees"]
-
-@uses(use_vars)
+@uses(["num_trees"])
 def train(args):
     X_train = args["X_train"]
     y_train = args["y_train"].flatten()
@@ -13,11 +11,9 @@ def train(args):
     rf = rf.fit(X_train, y_train)
     return rf
 
-@uses(use_vars)
 def describe(args, model):
     return "RandomForestClassifier with %i trees" % model.n_estimators
 
-@uses(use_vars)
 def test(args, model):
     X_test = args["X_test"]
     return model.predict_proba(X_test).tolist()

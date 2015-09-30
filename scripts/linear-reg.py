@@ -10,8 +10,9 @@ try:
 except ImportError:
     import pickle
 
-from pyscript.pyscript import ArffToArgs, load_pkl
+from pyscript.pyscript import ArffToArgs, uses
 
+@uses(["alpha", "epsilon"])
 def train(args):
 
     X_train = args["X_train"]
@@ -61,7 +62,6 @@ def describe(args, weights):
     st += "  " + str(intercept)
     return st
 
-
 def test(args, weights):
     X_test = args["X_test"]
     num_attributes = X_test.shape[1]
@@ -92,4 +92,3 @@ if __name__ == '__main__':
     model = train(args)
     print(describe(args, model))
     x.close()
-    #print load_pkl("../datasets/diabetes_numeric.pkl.gz")
