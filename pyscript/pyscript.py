@@ -16,6 +16,22 @@ def load_pkl(filename):
     f.close()
     return args
 
+class uses(object):
+    def __init__(self, used_args):
+        self.used_args = used_args
+        self.defaults = set([
+            "X_train", "y_train", "X_test", "class_type", "relation_name",
+            "attributes", "attr_values", "class", "num_classes", "attr_types"
+        ])
+    def __call__(self, f):
+        def wrapped_f(*args):
+            args_variable = args[0]
+            for var in args_variable:
+                if var not in self.used_args and var not in self.defaults:
+                    raise ValueError("This classifier does not use the non-default variable: '%s'" % var)
+            return f(*args)
+        return wrapped_f
+
 class ArffToArgs(object):
     def __init__(self):
         self.input = ""
