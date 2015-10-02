@@ -293,7 +293,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
 			
-	    	Utility.preProcessData(insts, getShouldImpute(), getShouldBinarize(), getShouldStandardize());
+	    	insts = Utility.preProcessData(insts, getShouldImpute(), getShouldBinarize(), getShouldStandardize());
 	        
 	        int numClasses = insts.numClasses();
 	        
