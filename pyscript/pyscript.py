@@ -41,6 +41,7 @@ class ArffToArgs(object):
         self.binarize = ""
         self.impute = ""
         self.debug = ""
+        self.arguments = ""
 
     def set_standardize(self, b):
         assert isinstance(b, bool)
@@ -58,6 +59,8 @@ class ArffToArgs(object):
         self.debug = "-debug" if b else ""
     def set_class_index(self, class_index):
         self.class_index = class_index
+    def set_arguments(self, arguments):
+        self.arguments = arguments
 
     def get_args(self):
         if self.input == "" or self.class_index == "":
@@ -65,8 +68,8 @@ class ArffToArgs(object):
         self.output = tempfile.gettempdir() + os.path.sep + "%s_%f.pkl.gz" % ( os.path.basename(self.input), time.time() )
         self.output = self.output.replace("\\", "\\\\") # for windows
         driver = ["java", "weka.Run", "weka.pyscript.ArffToPickle",
-            "-i", self.input, "-o", self.output, "-c", self.class_index, self.standardize, self.binarize,
-            self.impute, self.debug
+            "-i", self.input, "-o", self.output, "-c", self.class_index, "-args", self.arguments,
+            self.standardize, self.binarize, self.impute, self.debug
         ]
         sys.stderr.write("%s\n" % " ".join(driver))
         result = call(driver)
@@ -93,5 +96,6 @@ if __name__ == '__main__':
     x.set_binarize(True)
     x.set_impute(True)
     x.set_class_index("last")
-    x.get_args()
+    x.set_arguments("a='\\'foo\\'';b='bar';c=0.001")
+    print x.get_args().keys()
     x.close()

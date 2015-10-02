@@ -1,0 +1,9 @@
+@relation special-chars
+@attribute x1 {'\'foo\'', '\'bar\'', 'newline\n', '"doublequotes"'}
+@attribute y numeric
+
+@data
+'\'foo\'',1
+'\'bar\'',0
+'newline\n',0
+'"doublequotes"',1

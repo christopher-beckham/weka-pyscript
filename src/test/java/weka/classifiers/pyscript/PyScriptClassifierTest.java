@@ -6,6 +6,7 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import weka.classifiers.AbstractClassifierTest;
@@ -19,6 +20,16 @@ public class PyScriptClassifierTest {
 	//public PyScriptClassifierTest(String name) {
 	//	super(name);
 	//}
+	
+	@Test
+	public void testSpecialCharacters() throws Exception {
+		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
+		ps.setPythonFile( new File("scripts/zeror.py") );
+		DataSource ds = new DataSource("datasets/special-chars.arff");
+		Instances data = ds.getDataSet();
+		data.setClassIndex( data.numAttributes() - 1);
+		ps.buildClassifier(data);
+	}
 
 	@Test
 	public void testRandomForestOnDiabetes() throws Exception {
@@ -63,7 +74,7 @@ public class PyScriptClassifierTest {
 		assertNotEquals( ps.distributionsForInstances(train), null );	
 	}
 	
-	@Test
+	@Test(expected=Exception.class)
 	public void testExceptionRaiser() throws Exception {
 		System.out.println("testExceptionRaiser()");
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();

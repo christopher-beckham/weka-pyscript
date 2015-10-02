@@ -17,7 +17,7 @@ import weka.python.PythonSession;
 public class ArffToPickle implements CommandlineRunnable {
 	
 	private static final String USAGE = "Usage: -i <arff file> -o <destination file> -c <class index> "
-			+ "[-cmd <python command>] [-impute] [-binarize] [-standardize] [-debug]";
+			+ "[-cmd <python command>] [-args <string>] [-impute] [-binarize] [-standardize] [-debug]";
 	
 	private PythonSession m_session = null;
 	private boolean m_debug = false;
@@ -31,6 +31,16 @@ public class ArffToPickle implements CommandlineRunnable {
 	private boolean m_shouldImpute = false;
 	private boolean m_shouldStandardize = false;
 	private boolean m_shouldBinarize = false;
+
+	private String m_args = "";
+	
+	public void setArgs(String s) {
+		m_args = s;
+	}
+	
+	public String getArgs() {
+		return m_args;
+	}
 	
 	public void setPythonCommand(String s) {
 		m_cmd = s;
@@ -99,6 +109,9 @@ public class ArffToPickle implements CommandlineRunnable {
 				setPythonCommand(cmd);
 			}
 			
+			String args = Utils.getOption("args", options);
+			setArgs(args);
+			
 			setShouldImpute( Utils.getFlag("impute", options) );
 			setShouldBinarize( Utils.getFlag("binarize", options) );
 			setShouldStandardize( Utils.getFlag("standardize", options) );
@@ -117,6 +130,20 @@ public class ArffToPickle implements CommandlineRunnable {
 			
 			DataSource ds = new DataSource(m_filename);
 			Instances instances = ds.getDataSet();
+			try {
+				if( getClassIndex().equals("first")) {
+					instances.setClassIndex(0);
+				} else if( getClassIndex().equals("last")) {
+					instances.setClassIndex( instances.numAttributes() - 1 );
+				} else {
+					int classIdx = Integer.parseInt(getClassIndex());
+					instances.setClassIndex(classIdx);
+				}		
+			} catch(NumberFormatException ex) {
+				System.err.println("Illegal class index: " + getClassIndex());
+				System.err.println("Assuming class index is 'last'");
+				instances.setClassIndex( instances.numAttributes() - 1 );
+			}
 			
 			instances = Utility.preProcessData(instances, 
 					getShouldImpute(), getShouldBinarize(), getShouldStandardize() );
@@ -130,7 +157,7 @@ public class ArffToPickle implements CommandlineRunnable {
 			}
 			
 			List<String> out = m_session.executeScript(
-				Utility.createArgsScript(instances, "", m_session, m_debug),
+				Utility.createArgsScript(instances, getArgs(), m_session, m_debug),
 				m_debug
 			);
 		    if(out.get(1).contains(Utility.TRACEBACK_MSG)) {

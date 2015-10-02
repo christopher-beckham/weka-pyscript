@@ -7,6 +7,7 @@ import java.util.List;
 
 import weka.core.Attribute;
 import weka.core.Instances;
+import weka.core.Utils;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.NominalToBinary;
 import weka.filters.unsupervised.attribute.ReplaceMissingValues;
@@ -132,7 +133,7 @@ public class Utility {
 		    	Enumeration<Object> en = df.attribute(i).enumerateValues();
 		    	ArrayList<String> strs = new ArrayList<String>(df.attribute(i).numValues());
 		    	while(en.hasMoreElements()) {
-		    		strs.add( (String) en.nextElement() );
+		    		strs.add( escape( (String) en.nextElement() ) );
 		    	}    	
 		    	m_attrEnums.put(df.attribute(i).name(), strs);
 	    	}

@@ -1,3 +1,14 @@
+0.2.0
+---
+
+* Added Python 3 support.
+* Added `uses` decorator to prevent non-essential arguments from being passed.
+* Fixed nasty bug where imputation, binarisation, and standardisation would not actually
+  be applied to test instances.
+* GUI in WEKA now displays the exception as well.
+* Fixed bug where single quotes in attribute values could mess up args creation.
+* ArffToPickle now recognises class index option and arguments.
+
 0.1.1
 ---
 

@@ -252,10 +252,10 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	    
 		} catch(Exception ex) {
 			ex.printStackTrace();
+			throw ex;
 		} finally {
 			Utility.closePythonSession(this);
 		}
-
 	}
 	
 	@Override
@@ -341,12 +341,10 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 			
 	    } catch(Exception ex) {
 			ex.printStackTrace();
+			throw ex;
 		} finally {
 			Utility.closePythonSession(this);
 		}
-	    
-	    return null;
-		
 	}
 	
 	@Override
