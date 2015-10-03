@@ -6,6 +6,10 @@ import weka.core.CommandlineRunnable;
 import weka.core.Instances;
 import weka.core.Utils;
 import weka.core.converters.ConverterUtils.DataSource;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.NominalToBinary;
+import weka.filters.unsupervised.attribute.ReplaceMissingValues;
+import weka.filters.unsupervised.attribute.Standardize;
 import weka.pyscript.Utility;
 import weka.python.PythonSession;
 
@@ -144,9 +148,9 @@ public class ArffToPickle implements CommandlineRunnable {
 				System.err.println("Assuming class index is 'last'");
 				instances.setClassIndex( instances.numAttributes() - 1 );
 			}
-			
+
 			instances = Utility.preProcessData(instances, 
-					getShouldImpute(), getShouldBinarize(), getShouldStandardize() );
+					getShouldImpute(), getShouldStandardize(), getShouldBinarize() );
 			
 			if(m_classIndex.equals("first")) {
 				instances.setClassIndex(0);

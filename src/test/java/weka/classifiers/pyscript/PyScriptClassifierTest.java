@@ -41,8 +41,6 @@ public class PyScriptClassifierTest {
 		Instances train = ds.getDataSet();
 		train.setClassIndex( train.numAttributes() - 1 );
 		ps.buildClassifier(train);
-		assertNotEquals(ps.getModelString(), null);
-		assertNotEquals( ps.distributionsForInstances(train), null );
 	}
 	
 	@Test
@@ -56,8 +54,6 @@ public class PyScriptClassifierTest {
 		train.setClassIndex( train.numAttributes() - 1 );
 		ps.setShouldStandardize(true);
 		ps.buildClassifier(train);
-		assertNotEquals(ps.getModelString(), null);
-		assertNotEquals( ps.distributionsForInstances(train), null );
 	}
 	
 	@Test
@@ -70,8 +66,6 @@ public class PyScriptClassifierTest {
 		Instances train = ds.getDataSet();
 		train.setClassIndex( train.numAttributes() - 1 );
 		ps.buildClassifier(train);
-		assertNotEquals(ps.getModelString(), null);
-		assertNotEquals( ps.distributionsForInstances(train), null );	
 	}
 	
 	@Test(expected=Exception.class)

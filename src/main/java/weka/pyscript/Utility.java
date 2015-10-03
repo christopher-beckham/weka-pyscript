@@ -22,6 +22,7 @@ import weka.python.PythonSession;
 public class Utility {
 	
 	public static final String TRACEBACK_MSG = "Traceback (most recent call last):";
+
 	
 	/**
 	 * Start up a Python session
@@ -63,23 +64,23 @@ public class Utility {
 	 * @throws Exception
 	 */
 	public static Instances preProcessData(Instances data, boolean shouldImpute, 
-			boolean shouldBinarize, boolean shouldStandardize) throws Exception {
+			boolean shouldStandardize, boolean shouldBinarize) throws Exception {
 	    if( shouldImpute ) {
-	    	Filter replaceMissing = new ReplaceMissingValues();
-			replaceMissing.setInputFormat(data);
-			data = Filter.useFilter(data, replaceMissing);
+	    	Filter impute = new ReplaceMissingValues();
+	    	impute.setInputFormat(data);
+			data = Filter.useFilter(data, impute);
 	    }
-		if( shouldBinarize ) {
-			Filter nominalToBinary = new NominalToBinary();
-	    	nominalToBinary.setInputFormat(data);
-	    	// make resulting binary attrs nominal, not numeric
-	    	nominalToBinary.setOptions(new String[] { "-N" } );
-	    	data = Filter.useFilter(data, nominalToBinary);
-		}
 		if( shouldStandardize ) {
 			Filter standardize = new Standardize();
 			standardize.setInputFormat(data);
 			data = Filter.useFilter(data, standardize);
+		}
+		if( shouldBinarize ) {
+			Filter binarize = new NominalToBinary();
+			binarize.setInputFormat(data);
+	    	// make resulting binary attrs nominal, not numeric
+			binarize.setOptions(new String[] { "-N" } );
+	    	data = Filter.useFilter(data, binarize);
 		}
 		return data;
 	}

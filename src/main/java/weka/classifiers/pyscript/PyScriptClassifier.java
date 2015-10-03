@@ -76,6 +76,14 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	/** If there are any parameters to pass to the training script */
 	private String m_customArgs = DEFAULT_TRAIN_PYFILE_PARAMS;
 	
+	private Filter m_impute = null;
+	private Filter m_standardize = null;
+	private Filter m_binarize = null;
+	
+	public String getPickledModel() {
+		return m_pickledModel;
+	}
+	
 	@OptionMetadata(
 	   displayName = "printStdOut", commandLineParamName = "stdout",
 	   description = "Print standard out from Python script to stderr?",
@@ -222,10 +230,25 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	    	// now load training and testing class
 	    	String driver = "import imp\n"
 	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
-	    	executeScript(driver, "An error happened while trying to load the Python script:"); 	
+	    	executeScript(driver, "An error happened while trying to load the Python script:");
 	    	
-	    	data = Utility.preProcessData(data, getShouldImpute(),
-	    			getShouldBinarize(), getShouldStandardize());		
+		    if( getShouldImpute() ) {
+		    	m_impute = new ReplaceMissingValues();
+		    	m_impute.setInputFormat(data);
+				data = Filter.useFilter(data, m_impute);
+		    }
+			if( getShouldStandardize() ) {
+				m_standardize = new Standardize();
+				m_standardize.setInputFormat(data);
+				data = Filter.useFilter(data, m_standardize);
+			}
+			if( getShouldBinarize() ) {
+				m_binarize = new NominalToBinary();
+				m_binarize.setInputFormat(data);
+		    	// make resulting binary attrs nominal, not numeric
+				m_binarize.setOptions(new String[] { "-N" } );
+		    	data = Filter.useFilter(data, m_binarize);
+			}
 			
 			m_argsScript = Utility.createArgsScript(data, getArguments(), m_session, getDebug());		
 			executeScript(m_argsScript, "An error happened while trying to create the args variable:");
@@ -293,7 +316,16 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
 			
-	    	insts = Utility.preProcessData(insts, getShouldImpute(), getShouldBinarize(), getShouldStandardize());
+		    if( m_impute != null ) {
+				insts = Filter.useFilter(insts, m_impute);
+		    }
+			if( m_standardize != null ) {
+				insts = Filter.useFilter(insts, m_standardize);
+			}
+			if( m_binarize != null ) {
+				m_binarize.setOptions(new String[] { "-N" } );
+		    	insts = Filter.useFilter(insts, m_binarize);
+			}
 	        
 	        int numClasses = insts.numClasses();
 	        
