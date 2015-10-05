@@ -1,15 +1,11 @@
-# Template Description file for a Weka package
-#
-# 
-
 # Package name (required)
 PackageName=PyScriptClassifier
 
 # Version (required)
-Version=0.1.1
+Version=0.2.0
 
 #Date
-Date=28-09-2015
+Date=05-10-2015
 
 # Title (required)
 Title=PyScriptClassifier
@@ -26,7 +22,7 @@ Maintainer=Christopher Beckham <cjb60 at students dot waikato dot ac dot nz>
 License=GPL 3.0
 
 # Description (required)
-Description=WEKA classifier to execute arbitrary Python scripts
+Description=Classifier that is able to call arbitrary Python scripts that conform to the structure expected by this package. Allows classification and regression schemes in Python to be called by WEKA.
 
 # Changes=
 
@@ -43,4 +39,4 @@ URL=http://github.com/chrispy645/weka-pyscript
 #Related=
 
 # Dependencies
-Depends=weka (>=3.7.13-SNAPSHOT)
+Depends=weka (>=3.7.13-SNAPSHOT), wekaPython (>=1.0.1)

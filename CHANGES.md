@@ -8,6 +8,7 @@
 * GUI in WEKA now displays the exception as well.
 * Fixed bug where single quotes in attribute values could mess up args creation.
 * ArffToPickle now recognises class index option and arguments.
+* Fix nasty bug where filters were not being saved and were made from scratch from test data.
 
 0.1.1
 ---
