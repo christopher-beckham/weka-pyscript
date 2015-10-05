@@ -27,7 +27,7 @@ Description=Classifier that is able to call arbitrary Python scripts that confor
 # Changes=
 
 # Package URL for obtaining the package archive (required)
-PackageURL=http://github.com/chrispy645/weka-pyscript/releases/download/0.2.0/pyScript.zip
+PackageURL=http://github.com/chrispy645/weka-pyscript/releases/download/0.2.0/PyScriptClassifier.zip
 
 # URL for further information
 URL=http://github.com/chrispy645/weka-pyscript
