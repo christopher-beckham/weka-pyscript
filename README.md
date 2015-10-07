@@ -6,6 +6,8 @@ PyScriptClassifier
 This package allows users to construct classifiers with Python scripts for WEKA, given that the
 script conforms to an expected structure. Get started with your first classifier [here](https://github.com/chrispy645/weka-pyscript/wiki/Getting-started)!
 
+The tech report can be downloaded [here](http://www.cs.waikato.ac.nz/pubs/wp/2015/uow-cs-wp-2015-02.pdf).
+
 Installation
 ---
 
