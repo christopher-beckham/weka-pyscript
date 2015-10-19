@@ -40,3 +40,22 @@ URL=http://github.com/chrispy645/weka-pyscript
 
 # Dependencies
 Depends=weka (>=3.7.13-SNAPSHOT), wekaPython (>=1.0.0)
+
+# Message to display in installation. Can be used to provide
+# special instructions (e.g. manual stuff needed to complete
+# the installation process). (optional).
+MessageToDisplayOnInstallation=This package requires the R system to be installed on your\n\
+ computer before it can be used. Before using this package you must manually install\n\
+ the R package "rJava" by typing install.packages("rJava") from the R console.\n\
+ Furthermore, the environment variable R_HOME must be set to point to the installation\n\
+ directory for R and the R executable must be in the PATH environment variable.\n\
+ This package will attempt to locate the JRI native library (which is installed\n\
+ as part of rJava) automatically under Windows and Mac OS X. For this to succeed\n\
+ under Windows it is necessary for the R_LIBS_USER environment variable to be set to point\n\
+ to the user's personal R packages directory. Alternatively, the jri.native.library\n\
+ java property can be set to point directly to the jri native library file, or the\n\
+ java.library.path can be set to point to the directory that contains the jri native\n\
+ library file. More information on configuring Java to access JRI under various OS\n\
+ can be found at http://www.rforge.net/JRI/\n\n\
+ Example Knowledge Flow template files demonstrating the R components can be found in\n\
+ ${WEKA_HOME}/packages/RPlugin/templates.
