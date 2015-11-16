@@ -3,6 +3,7 @@ package weka.classifiers.pyscript;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -56,6 +57,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	private final boolean DEFAULT_SHOULD_IMPUTE = false;
 	private final String DEFAULT_PYTHON_COMMAND = "python";
 	private final boolean DEFAULT_PRINT_STDOUT = false;
+	private final boolean DEFAULT_SAVE_SCRIPT = false;
 	
 	private boolean m_shouldStandardize = DEFAULT_SHOULD_STANDARDIZE;
 	private boolean m_shouldBinarize = DEFAULT_SHOULD_BINARIZE;
@@ -76,12 +78,31 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	/** If there are any parameters to pass to the training script */
 	private String m_customArgs = DEFAULT_TRAIN_PYFILE_PARAMS;
 	
+	/** The Python script as a string (not null if m_saveScript is set) */
+	private String m_pyScript = null;
+	
+	/** Save the script or not? */
+	private boolean m_saveScript = DEFAULT_SAVE_SCRIPT;
+	
 	private Filter m_impute = null;
 	private Filter m_standardize = null;
 	private Filter m_binarize = null;
 	
 	public String getPickledModel() {
 		return m_pickledModel;
+	}
+	
+	@OptionMetadata(
+		displayName = "saveScript", commandLineParamName = "save",
+		description = "Save script in model?",
+		commandLineParamSynopsis = "-save", commandLineParamIsFlag = true, displayOrder = 4
+	)
+	public boolean getSaveScript() {
+		return m_saveScript;
+	}
+	
+	public void setSaveScript(boolean b) {
+		m_saveScript = b;
 	}
 	
 	@OptionMetadata(
@@ -272,6 +293,11 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 		    executeScript(driver, "An error happened while executing the describe() function:");
 		    
 		    m_modelString = m_session.getVariableValueFromPythonAsPlainString("model_description", getDebug());
+		    
+		    // save the script if needed
+		    if( getSaveScript() ) {
+		    	m_pyScript = String.join("\n", Files.readAllLines( getPythonFile().toPath() ) );
+		    }
 	    
 		} catch(Exception ex) {
 			ex.printStackTrace();
@@ -303,13 +329,27 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 		    m_session = Utility.initPythonSession(this, getPythonCommand(), getDebug());
 	    	
 			// see if the python file exists
-			if( !getPythonFile().exists() ) {
+			if( !getSaveScript() && !getPythonFile().exists() ) {
 				throw new FileNotFoundException( getPythonFile() + " doesn't exist!");
+			}    	
+
+			// if the user didn't save the script
+			String parentDir = null;
+			String scriptName = null;
+			if( !getSaveScript() ) {
+				parentDir = getPythonFile().getAbsoluteFile().getParent();
+				scriptName = getPythonFile().getName();
+			} else {
+				File tmp = File.createTempFile("pyscript", ".py");
+				PrintWriter pw = new PrintWriter(tmp);
+				pw.write( m_pyScript );
+				pw.flush();
+				pw.close();
+				parentDir = tmp.getAbsoluteFile().getParent();
+				scriptName = tmp.getName();
+				if(getDebug()) System.err.println( "tmp python script: " + tmp.getAbsolutePath() );
 			}
-	    	
-			// set the working directory of the python vm to that of the script
-			String parentDir = getPythonFile().getAbsoluteFile().getParent();
-			String scriptName = getPythonFile().getName();
+			
 			if(parentDir != null) {
 				String driver = "import os\nos.chdir('" + parentDir + "')\n";
 				driver += "import sys\nsys.path.append('" + parentDir + "')\n";

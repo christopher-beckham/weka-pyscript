@@ -1,3 +1,8 @@
+0.2.1
+---
+
+* Can now choose to save the script in the model using the `-save` flag.
+
 0.2.0
 ---
 
