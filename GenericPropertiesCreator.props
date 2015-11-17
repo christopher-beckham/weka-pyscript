@@ -6,3 +6,6 @@
 # Lists the Classifiers-Packages I want to choose from
 weka.classifiers.Classifier=\
  weka.classifiers.pyscript
+
+weka.filters.Filter=\
+ weka.filters.pyscript

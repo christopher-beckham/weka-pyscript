@@ -87,6 +87,37 @@ class ArffToArgs(object):
         except OSError:
             pass
 
+def get_header(args):
+
+    relation_name = args["relation_name"]
+    attributes = args["attributes"]
+    attr_types = args["attr_types"]
+    attr_values = args["attr_values"]
+    
+    header = []
+    header.append("@relation %s" % relation_name)
+    for attribute in attributes:
+        if attribute in attr_values:
+            header.append( "@attribute %s {%s}" % (attribute, ",".join(attr_values[attribute]) ) )
+        else:
+            header.append( "@attribute %s numeric" % attribute )
+    header.append("@data")
+    return "\n".join(header)
+
+
+
+def vector_to_string(vector, args):
+    attributes = args["attributes"]
+    attr_values = args["attr_values"]
+    #vector = vector.tolist()
+    string_vector = []
+    for i in range(0, len(vector)):
+        if attributes[i] in attr_values:
+            string_vector.append( str(attr_values[ attributes[i] ][ int(vector[i]) ] ) )
+        else:
+            string_vector.append( str( vector[i] ) )
+    return ",".join(string_vector)
+
 if __name__ == '__main__':
 
     x = ArffToArgs()

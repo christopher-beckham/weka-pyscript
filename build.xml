@@ -65,6 +65,7 @@
       <include name="weka/pyscript/ArffToPickle.java" />
       <include name="weka/pyscript/ChangeScriptPath.java" />
       <include name="weka/pyscript/Utility.java" />
+      <include name="weka/filters/pyscript/PyScriptFilter.java" />
 
       <compilerarg value="${compilerarg}"/>
       <classpath refid="project.class.path" /> 
@@ -261,6 +262,7 @@
          <include name="src/main/java/weka/pyscript/ChangeScriptPath.java" />
          <include name="src/main/java/weka/pyscript/Utility.java" />
          <include name="src/test/java/weka/classifiers/pyscript/PyScriptClassifierTest.java" />
+	 <include name="src/main/java/weka/filters/pyscript/PyScriptFilter.java" />
        </fileset>
     </copy>
     <zip destfile="${dist}/${package}.zip" 
