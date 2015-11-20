@@ -1,26 +1,20 @@
 package weka.classifiers.pyscript;
 
-
-
 import static org.junit.Assert.*;
 
 import java.io.File;
-
-import org.junit.Ignore;
 import org.junit.Test;
-
-import weka.classifiers.AbstractClassifierTest;
 import weka.classifiers.Classifier;
-import weka.core.BatchPredictor;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 
 public class PyScriptClassifierTest {
 	
-	//public PyScriptClassifierTest(String name) {
-	//	super(name);
-	//}
-	
+	/**
+	 * Test to see if the classifier will work without error
+	 * for a peculiar ARFF file.
+	 * @throws Exception
+	 */
 	@Test
 	public void testSpecialCharacters() throws Exception {
 		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
@@ -31,6 +25,12 @@ public class PyScriptClassifierTest {
 		ps.buildClassifier(data);
 	}
 
+	/**
+	 * Not testing anything in particular here - just make sure
+	 * that we can train the RF example without some
+	 * exception being thrown.
+	 * @throws Exception
+	 */
 	@Test
 	public void testRandomForestOnDiabetes() throws Exception {
 		System.out.println("testRandomForestOnDiabetes()");
@@ -43,6 +43,12 @@ public class PyScriptClassifierTest {
 		ps.buildClassifier(train);
 	}
 	
+	/**
+	 * Not testing anything in particular here - just make sure
+	 * that we can train the linear reg example without some
+	 * exception being thrown.
+	 * @throws Exception
+	 */
 	@Test
 	public void testLinearRegressionOnDiabetes() throws Exception {
 		System.out.println("testLinearRegressionOnDiabetes()");
@@ -56,6 +62,12 @@ public class PyScriptClassifierTest {
 		ps.buildClassifier(train);
 	}
 	
+	/**
+	 * Not testing anything in particular here - just make sure
+	 * that we can train ZeroR on Iris without some exception
+	 * being thrown.
+	 * @throws Exception
+	 */
 	@Test
 	public void testZeroROnIris() throws Exception {
 		System.out.println("testZeroROnIris()");
@@ -68,6 +80,11 @@ public class PyScriptClassifierTest {
 		ps.buildClassifier(train);
 	}
 	
+	/**
+	 * Test to see an exception gets thrown when a "bad"
+	 * script is given to the classifier.
+	 * @throws Exception
+	 */
 	@Test(expected=Exception.class)
 	public void testExceptionRaiser() throws Exception {
 		System.out.println("testExceptionRaiser()");
@@ -79,6 +96,27 @@ public class PyScriptClassifierTest {
 		ps.buildClassifier(train);
 		assertEquals(ps.getModelString(), null);
 		
+	}
+	
+	/**
+	 * Test to see if the script save feature works.
+	 * @throws Exception
+	 */
+	@Test
+	public void testScriptSave() throws Exception {
+		System.out.println("testScriptSave()");
+		PyScriptClassifier ps = (PyScriptClassifier) getClassifier();
+		ps.setDebug(true);
+		ps.setPythonFile( new File("scripts/zeror.py") );
+		ps.setArguments("");
+		DataSource ds = new DataSource("datasets/iris.arff");
+		Instances train = ds.getDataSet();
+		train.setClassIndex( train.numAttributes() - 1 );
+		ps.setSaveScript(true);
+		ps.buildClassifier(train);
+		// we saved the script so it doesn't matter where it is now
+		ps.setPythonFile( new File("bad-file.py") );
+		ps.distributionsForInstances(train);
 	}
 
 	public Classifier getClassifier() {
