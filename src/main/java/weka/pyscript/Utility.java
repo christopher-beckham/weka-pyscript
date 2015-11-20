@@ -1,5 +1,7 @@
 package weka.pyscript;
 
+import java.io.File;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -181,6 +183,15 @@ public class Utility {
 	    
 	    return script.toString();
 	    
+	}
+	
+	public static File tempFileFromString(String script) throws Exception {
+		File tmp = File.createTempFile("pyscript", ".py");
+		PrintWriter pw = new PrintWriter(tmp);
+		pw.write( script );
+		pw.flush();
+		pw.close();
+		return tmp;
 	}
 
 }

@@ -340,11 +340,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 				parentDir = getPythonFile().getAbsoluteFile().getParent();
 				scriptName = getPythonFile().getName();
 			} else {
-				File tmp = File.createTempFile("pyscript", ".py");
-				PrintWriter pw = new PrintWriter(tmp);
-				pw.write( m_pyScript );
-				pw.flush();
-				pw.close();
+				File tmp = Utility.tempFileFromString(m_pyScript);
 				parentDir = tmp.getAbsoluteFile().getParent();
 				scriptName = tmp.getName();
 				if(getDebug()) System.err.println( "tmp python script: " + tmp.getAbsolutePath() );

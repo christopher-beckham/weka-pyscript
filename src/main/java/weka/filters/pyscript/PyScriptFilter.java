@@ -2,6 +2,8 @@ package weka.filters.pyscript;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.nio.file.Files;
 import java.util.List;
 
 import weka.classifiers.pyscript.PyScriptClassifier;
@@ -26,6 +28,8 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	private transient PythonSession m_session = null;
 	
 	private final String DEFAULT_PYTHON_COMMAND = "python";
+	private final boolean DEFAULT_SAVE_SCRIPT = false;
+	
 	private final File DEFAULT_PYFILE = new File( System.getProperty("user.dir") );
 	private final String DEFAULT_TRAIN_PYFILE_PARAMS = "";
 	
@@ -40,7 +44,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	private String m_argsScript = null;
 	
 	private String m_pickledModel = null;
-	private String m_modelString = null;
+	private String m_pyScript = null;
 	
 	public String getArguments() {
 		return m_customArgs;
@@ -85,6 +89,21 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		return true;
 	}
 	
+	boolean m_saveScript = DEFAULT_SAVE_SCRIPT;
+	
+	@OptionMetadata(
+		displayName = "saveScript", commandLineParamName = "save",
+		description = "Save script in model?",
+		commandLineParamSynopsis = "-save", commandLineParamIsFlag = true, displayOrder = 4
+	)
+	public boolean getSaveScript() {
+		return m_saveScript;
+	}
+
+	public void setSaveScript(boolean b) {
+		m_saveScript = b;
+	}
+	
 	private void executeScript(String driver, String stdErrMessage) throws Exception {
 		List<String> out = m_session.executeScript(driver, getDebug());
 		if( stdErrMessage != null) {
@@ -98,12 +117,10 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	}
 
 	@Override
-	protected Instances determineOutputFormat(Instances inputFormat)
+	protected Instances determineOutputFormat(Instances data)
 			throws Exception {
 		
 		try {
-			
-			Instances data = inputFormat;
 			
 			// first train the filter
 			m_session = Utility.initPythonSession( this, getPythonCommand(), getDebug() );
@@ -138,21 +155,15 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    
 		    // save model parameters
 		    m_pickledModel = m_session.getVariableValueFromPythonAsPickledObject("model", getDebug());
-	
-		    // get model description
-		    //driver = "model_description = cls.describe(args, model)";
-		    //executeScript(driver, "An error happened while executing the describe() function:");
-		    //m_modelString = m_session.getVariableValueFromPythonAsPlainString("model_description", getDebug());
-		    
-		    //System.out.println(m_modelString);
 		    
 		    // ok now filter
-		    m_session.executeScript("args['X'] = args['X_train']\nargs['y'] = args['y_train']\n", getDebug());
+		    // m_session.executeScript("args['X'] = args['X_train'][0:1]\nargs['y'] = args['y_train'][0:1]\n", getDebug());
+		    m_session.executeScript("import numpy as np; args['X'] = args['y'] = np.ones((0,0));\n", getDebug());
 		    driver = "arff = cls.filter(args, model)";
 		    executeScript(driver, "An error happened while executing the filter() function:");
 		    
 		    String arff = m_session.getVariableValueFromPythonAsPlainString("arff", getDebug());
-		    //oSystem.out.println(arff);
+		    //System.out.println(arff);
 		    
 		    DataSource ds = new DataSource( new ByteArrayInputStream(arff.getBytes("UTF-8") ) );
 		    Instances transformed = ds.getDataSet();
@@ -161,6 +172,11 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    transformed.setClassIndex( transformed.numAttributes() - 1);
 		    
 		    //System.out.println(transformed);
+
+		    // save the script if needed
+		    if( getSaveScript() ) {
+		    	m_pyScript = String.join("\n", Files.readAllLines( getPythonFile().toPath() ) );
+		    }
 			
 		    return transformed;
 		    
@@ -174,15 +190,28 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	}
 
 	@Override
-	protected Instances process(Instances instances) throws Exception {
+	protected Instances process(Instances data) throws Exception {
 		
 		try {
 			m_session = Utility.initPythonSession( this, getPythonCommand(), getDebug() );
 			
-			Instances data = instances;
+			// see if the python file exists
+			if( !getSaveScript() && !getPythonFile().exists() ) {
+				throw new FileNotFoundException( getPythonFile() + " doesn't exist!");
+			} 
 			
-			String parentDir = getPythonFile().getAbsoluteFile().getParent();
-			String scriptName = getPythonFile().getName();
+			String parentDir = null;
+			String scriptName = null;
+			if( !getSaveScript() ) {
+				parentDir = getPythonFile().getAbsoluteFile().getParent();
+				scriptName = getPythonFile().getName();
+			} else {
+				File tmp = Utility.tempFileFromString(m_pyScript);
+				parentDir = tmp.getAbsoluteFile().getParent();
+				scriptName = tmp.getName();
+				if(getDebug()) System.err.println( "tmp python script: " + tmp.getAbsolutePath() );
+			}
+			
 			if(parentDir != null) {
 				String driver = "import os\nos.chdir('" + parentDir + "')\n";
 				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
@@ -213,8 +242,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 			throw ex;
 		} finally {
 			Utility.closePythonSession(this);
-		}
-		
+		}	
 	}
 	
 	@Override
