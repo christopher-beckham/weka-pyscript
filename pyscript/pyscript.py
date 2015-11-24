@@ -1,3 +1,4 @@
+from __future__ import print_function
 from subprocess import call
 import gzip
 try:
@@ -132,5 +133,5 @@ if __name__ == '__main__':
     x.set_impute(True)
     x.set_class_index("last")
     x.set_arguments("a='\\'foo\\'';b='bar';c=0.001")
-    print x.get_args().keys()
+    print(x.get_args().keys())
     x.close()

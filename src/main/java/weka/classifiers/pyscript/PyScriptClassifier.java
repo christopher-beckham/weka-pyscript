@@ -15,8 +15,10 @@ import java.util.List;
 import java.util.Vector;
 
 import weka.classifiers.AbstractClassifier;
+import weka.classifiers.rules.ZeroR;
 import weka.core.Attribute;
 import weka.core.BatchPredictor;
+import weka.core.Capabilities;
 import weka.core.CapabilitiesHandler;
 import weka.core.Instance;
 import weka.core.Instances;
@@ -25,6 +27,7 @@ import weka.core.OptionHandler;
 import weka.core.OptionMetadata;
 import weka.core.Randomizable;
 import weka.core.TechnicalInformation;
+import weka.core.Capabilities.Capability;
 import weka.core.TechnicalInformation.Field;
 import weka.core.TechnicalInformationHandler;
 import weka.core.Utils;
@@ -46,7 +49,7 @@ import weka.python.PythonSession;
  * @author cjb60
  */
 public class PyScriptClassifier extends AbstractClassifier implements BatchPredictor,
-	TechnicalInformationHandler {
+	TechnicalInformationHandler, CapabilitiesHandler {
 	
 	private static final long serialVersionUID = 2846535265976949760L;
 	
@@ -71,6 +74,8 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	private transient PythonSession m_session = null;
 	
 	private String m_modelString = null;
+	
+	private ZeroR m_zeror = null;
 	
 	/** The default Python script to execute */
 	private File m_pyTrainFile = DEFAULT_PYFILE;
@@ -226,9 +231,32 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 			System.err.println( "Standard out:\n" + out.get(0) );
 		}
 	}
+	
+	@Override
+	public Capabilities getCapabilities() {
+		Capabilities result = super.getCapabilities();
+		result.disableAll();
+		// attributes
+		result.enable(Capability.NOMINAL_ATTRIBUTES);
+		result.enable(Capability.NUMERIC_ATTRIBUTES);
+		result.enable(Capability.MISSING_VALUES);
+		// class
+		result.enable(Capability.NOMINAL_CLASS);
+		result.enable(Capability.NUMERIC_CLASS);
+		result.enable(Capability.MISSING_CLASS_VALUES);
+		return result;
+	}
 
 	@Override
 	public void buildClassifier(Instances data) throws Exception {
+		
+		getCapabilities().testWithFail(data);
+		
+		if(data.numAttributes() == 1 && data.classIndex() == 0) {
+			m_zeror = new ZeroR();
+			m_zeror.buildClassifier(data);
+			return;
+		}
 		
 		try {
 		
@@ -318,6 +346,10 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	@Override
 	public double[][] distributionsForInstances(Instances insts)
 			throws Exception {
+		
+		if(m_zeror != null) {
+			return m_zeror.distributionsForInstances(insts);
+		}
 		
 	    try {
 		
