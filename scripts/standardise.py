@@ -13,10 +13,13 @@ def train(args):
 def filter(args, model):
     X = args["X"]
     y = args["y"]
+    attr_types = args["attr_types"]
+    attributes = args["attributes"]
     means = model[0]
     sds = model[1]
     for i in range(0, X.shape[1]):
-        X[:,i] = (X[:,i] - means[i]) / sds[i]
+        if attr_types[ attributes[i] ] == "numeric":
+            X[:,i] = (X[:,i] - means[i]) / sds[i]
     header = get_header(args)
     buf = [header]
     for i in range(0, X.shape[0]):
@@ -29,6 +32,7 @@ if __name__ == '__main__':
     x.set_class_index("last")
     args = x.get_args()
     x.close()
+    print args["attr_types"]
     model = train(args)
     args["X"] = args["X_train"]
     args["y"] = args["y_train"]
