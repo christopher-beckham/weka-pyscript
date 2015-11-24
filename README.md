@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.29050.svg)](http://dx.doi.org/10.5281/zenodo.29050)
+[![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.33855.svg)](http://dx.doi.org/10.5281/zenodo.33855)
 
 PyScriptClassifier
 ===
