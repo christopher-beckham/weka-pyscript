@@ -10,7 +10,7 @@ def train(args):
         sds.append( np.nanstd(X_train[:,i], ddof=1) )
     return (means, sds)
 
-def filter(args, model):
+def process(args, model):
     X = args["X"]
     y = args["y"]
     attr_types = args["attr_types"]
@@ -36,4 +36,4 @@ if __name__ == '__main__':
     model = train(args)
     args["X"] = args["X_train"]
     args["y"] = args["y_train"]
-    print filter(args, model)
+    print process(args, model)
