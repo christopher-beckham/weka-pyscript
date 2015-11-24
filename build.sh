@@ -1,8 +1,19 @@
 #!/bin/bash
 
+if [ -z $WEKA_HOME ]; then
+    echo "WEKA_HOME is not set! Exiting"
+    exit 1
+fi
+
+WEKA_PYTHON_JAR=$WEKA_HOME/packages/wekaPython/wekaPython.jar
+if [ ! -f $WEKA_PYTHON_JAR ]; then
+    echo "Cannot find ${WEKA_PYTHON_JAR}! Do you have the wekaPython package installed?"
+    exit 1
+fi
+
+CLASSPATH=$WEKA_HOME/weka.jar:$WEKA_PYTHON_JAR
+
 ant clean
-ant make_package -Dpackage=PyScriptClassifier
+ant make_package -Dpackage=PyScript
 cd dist
-java weka.core.WekaPackageManager -install-package PyScriptClassifier.zip
-#cd ../datasets
-#java weka.gui.explorer.Explorer diabetes_numeric.arff
+java weka.core.WekaPackageManager -offline -install-package PyScript.zip
