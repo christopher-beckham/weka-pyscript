@@ -3,7 +3,7 @@
 PyScriptClassifier
 ===
 
-This package allows users to construct classifiers with Python scripts for WEKA, given that the
+This package allows users to construct classifiers and filters with Python scripts for WEKA, given that the
 script conforms to an expected structure. Get started with your first classifier [here](https://github.com/chrispy645/weka-pyscript/wiki/Getting-started)!
 
 The tech report can be downloaded [here](http://www.cs.waikato.ac.nz/pubs/wp/2015/uow-cs-wp-2015-02.pdf).
@@ -88,4 +88,15 @@ java weka.Run .PyScriptClassifier \
   -script scripts/scikit-rf.py \
   -args "num_trees=30" \
   -t datasets/iris.arff
+```
+
+#### Standardise filter
+
+We can also write Python scripts that act as filters. Here, we apply zero-mean unit-variance (ZMUV) standardisation to all numeric attributes in the data:
+
+```
+java weka.Run .PyScriptFilter \
+  -script scripts/standardise.py \
+  -i datasets/iris.arff \
+  -c last
 ```
