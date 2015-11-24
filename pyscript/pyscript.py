@@ -9,6 +9,7 @@ import sys
 import time
 import tempfile
 import shutil
+import numpy as np
 
 def load_pkl(filename):
     f = gzip.open(filename)
@@ -106,16 +107,19 @@ def get_header(args):
 
 
 
-def vector_to_string(vector, args):
+def instance_to_string(x, y, args):
     attributes = args["attributes"]
     attr_values = args["attr_values"]
-    #vector = vector.tolist()
     string_vector = []
-    for i in range(0, len(vector)):
+    for i in range(0, len(x)):
         if attributes[i] in attr_values:
-            string_vector.append( str(attr_values[ attributes[i] ][ int(vector[i]) ] ) )
+            string_vector.append( str(attr_values[ attributes[i] ][ int(x[i]) ] ) )
         else:
-            string_vector.append( str( vector[i] ) )
+            string_vector.append( str( x[i] ) )
+    if np.isnan(y[0]):
+        string_vector.append("?")
+    else:
+        string_vector.append( attr_values["class"][int(y[0])] )
     return ",".join(string_vector)
 
 if __name__ == '__main__':

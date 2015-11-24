@@ -234,6 +234,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    String arff = m_session.getVariableValueFromPythonAsPlainString("arff", getDebug());
 		    DataSource ds = new DataSource( new ByteArrayInputStream(arff.getBytes("UTF-8") ) );
 		    Instances transformed = ds.getDataSet();
+		    transformed.setClassIndex( data.numAttributes() - 1);
 		    
 		    return transformed;
 	    

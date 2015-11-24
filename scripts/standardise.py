@@ -1,4 +1,4 @@
-from pyscript.pyscript import ArffToArgs, get_header, vector_to_string
+from pyscript.pyscript import ArffToArgs, get_header, instance_to_string
 import numpy as np
 
 def train(args):
@@ -20,10 +20,7 @@ def filter(args, model):
     header = get_header(args)
     buf = [header]
     for i in range(0, X.shape[0]):
-        vector = X[i].tolist()
-        vector.append( int(y[i][0]) )
-        buf.append( vector_to_string(vector, args) )
-    #return (header, buf)
+        buf.append( instance_to_string(X[i], y[i], args) )
     return "\n".join(buf)
         
 if __name__ == '__main__':
