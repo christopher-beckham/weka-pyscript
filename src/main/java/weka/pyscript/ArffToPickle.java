@@ -30,7 +30,7 @@ public class ArffToPickle implements CommandlineRunnable {
 	private String m_filename = null;
 	private String m_dest = null;
 	
-	private String m_classIndex = "last";
+	private String m_classIndex = "";
 	
 	private boolean m_shouldImpute = false;
 	private boolean m_shouldStandardize = false;
@@ -106,7 +106,8 @@ public class ArffToPickle implements CommandlineRunnable {
 		try {
 			setFilename( Utils.getOption("i", options) );
 			setDest( Utils.getOption("o", options) );
-			setClassIndex( Utils.getOption("c", options) );
+			String tmp = Utils.getOption("c", options);
+			if(!tmp.equals("")) setClassIndex(tmp);
 			
 			String cmd = Utils.getOption("cmd", options);
 			if( cmd.length() != 0) {
@@ -139,7 +140,7 @@ public class ArffToPickle implements CommandlineRunnable {
 					instances.setClassIndex(0);
 				} else if( getClassIndex().equals("last")) {
 					instances.setClassIndex( instances.numAttributes() - 1 );
-				} else {
+				} else if( !getClassIndex().equals("") ) {
 					int classIdx = Integer.parseInt(getClassIndex());
 					instances.setClassIndex(classIdx);
 				}		
@@ -152,13 +153,15 @@ public class ArffToPickle implements CommandlineRunnable {
 			instances = Utility.preProcessData(instances, 
 					getShouldImpute(), getShouldStandardize(), getShouldBinarize() );
 			
+			/*
 			if(m_classIndex.equals("first")) {
 				instances.setClassIndex(0);
 			} else if (m_classIndex.equals("last") ) {
 				instances.setClassIndex( instances.numAttributes() - 1 );
-			} else {
+			} else if( !m_classIndex.equals("") ) {
 				instances.setClassIndex( Integer.parseInt(m_classIndex) );
 			}
+			*/
 			
 			List<String> out = m_session.executeScript(
 				Utility.createArgsScript(instances, getArgs(), m_session, m_debug),

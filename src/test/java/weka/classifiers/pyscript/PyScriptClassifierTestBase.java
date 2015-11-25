@@ -14,7 +14,7 @@ public class PyScriptClassifierTestBase extends AbstractClassifierTest {
 	@Override
 	public Classifier getClassifier() {
 		PyScriptClassifier ps = new PyScriptClassifier();
-		ps.setPythonFile(new File("scripts/zeror-all-class-types.py"));
+		ps.setPythonFile(new File("tests/zeror-all-class-types.py"));
 		ps.setSaveScript(true);
 		return ps;
 	}

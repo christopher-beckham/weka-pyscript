@@ -7,9 +7,11 @@ import java.nio.file.Files;
 import java.util.List;
 
 import weka.classifiers.pyscript.PyScriptClassifier;
+import weka.core.Capabilities;
 import weka.core.DenseInstance;
 import weka.core.Instances;
 import weka.core.OptionMetadata;
+import weka.core.Capabilities.Capability;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.SimpleBatchFilter;
 import weka.pyscript.Utility;
@@ -46,6 +48,11 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	private String m_pickledModel = null;
 	private String m_pyScript = null;
 	
+	@OptionMetadata(
+		displayName = "arguments",
+		description = "Arguments to pass to the script", commandLineParamName = "args",
+		commandLineParamSynopsis = "-args <arguments>", displayOrder = 4
+	)
 	public String getArguments() {
 		return m_customArgs;
 	}
@@ -81,8 +88,8 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	}
 
 	@Override
-	public String globalInfo() {
-		return null;
+	public String globalInfo() {  
+		return "Class for calling filters that are Python scripts.";
 	}
 	
 	public boolean getPrintStdOut() {
@@ -115,10 +122,30 @@ public class PyScriptFilter extends SimpleBatchFilter {
 			System.err.println( "Standard out:\n" + out.get(0) );
 		}
 	}
+	
+	@Override
+	public Capabilities getCapabilities() {
+		Capabilities result = super.getCapabilities();
+		result.disableAll();
+		// attributes
+		result.enable(Capability.NOMINAL_ATTRIBUTES);
+		result.enable(Capability.NUMERIC_ATTRIBUTES);
+		result.enable(Capability.STRING_ATTRIBUTES);
+		result.enable(Capability.MISSING_VALUES);
+		// class
+		result.enable(Capability.NOMINAL_CLASS);
+		result.enable(Capability.NUMERIC_CLASS);
+		result.enable(Capability.MISSING_CLASS_VALUES);
+		// TODO: support no class set
+		result.enable(Capability.NO_CLASS);
+		return result;
+	}
 
 	@Override
 	protected Instances determineOutputFormat(Instances data)
 			throws Exception {
+		
+		//getCapabilities().testWithFail(data);
 		
 		try {
 			
@@ -147,7 +174,10 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		     * X and Y, so let's execute to script to rename these.
 		     */
 		    m_session.instancesToPythonAsScikitLearn(data, "train", false);
-		    m_session.executeScript("args['X_train'] = X\nargs['y_train']=Y\n", getDebug());
+		    m_session.executeScript("args['X_train'] = X\n", getDebug());
+		    if(data.classIndex() >= 0) {
+		    	m_session.executeScript("args['y_train'] = Y\n", getDebug());
+		    }
 		    
 		    // build the classifier
 		    driver = "model = cls.train(args)";	    
@@ -160,7 +190,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    // m_session.executeScript("args['X'] = args['X_train'][0:1]\nargs['y'] = args['y_train'][0:1]\n", getDebug());
 		    m_session.executeScript("import numpy as np; args['X'] = args['y'] = np.ones((0,0));\n", getDebug());
 		    driver = "arff = cls.process(args, model)";
-		    executeScript(driver, "An error happened while executing the filter() function:");
+		    executeScript(driver, "An error happened while executing the process() function:");
 		    
 		    String arff = m_session.getVariableValueFromPythonAsPlainString("arff", getDebug());
 		    //System.out.println(arff);

@@ -70,9 +70,16 @@ class ArffToArgs(object):
         self.output = tempfile.gettempdir() + os.path.sep + "%s_%f.pkl.gz" % ( os.path.basename(self.input), time.time() )
         self.output = self.output.replace("\\", "\\\\") # for windows
         driver = ["java", "weka.Run", "weka.pyscript.ArffToPickle",
-            "-i", self.input, "-o", self.output, "-c", self.class_index, "-args", self.arguments,
-            self.standardize, self.binarize, self.impute, self.debug
-        ]
+            "-i", self.input, "-o", self.output ]
+        if self.class_index != None:
+            driver.append("-c")
+            driver.append(self.class_index)
+        driver.append("-args")
+        driver.append(self.arguments)
+        driver.append(self.standardize)
+        driver.append(self.binarize)
+        driver.append(self.impute)
+        driver.append(self.debug)
         sys.stderr.write("%s\n" % " ".join(driver))
         result = call(driver)
         if result != 0:
@@ -113,14 +120,18 @@ def instance_to_string(x, y, args):
     attr_values = args["attr_values"]
     string_vector = []
     for i in range(0, len(x)):
-        if attributes[i] in attr_values:
-            string_vector.append( str(attr_values[ attributes[i] ][ int(x[i]) ] ) )
+        if np.isnan(x[i]):
+            string_vector.append("?")
         else:
-            string_vector.append( str( x[i] ) )
-    if np.isnan(y[0]):
-        string_vector.append("?")
-    else:
-        string_vector.append( attr_values["class"][int(y[0])] )
+            if attributes[i] in attr_values:
+                string_vector.append( str(attr_values[ attributes[i] ][ int(x[i]) ] ) )
+            else:
+                string_vector.append( str( x[i] ) )
+    if y != None:
+        if np.isnan(y[0]):
+            string_vector.append("?")
+        else:
+            string_vector.append( attr_values["class"][int(y[0])] )
     return ",".join(string_vector)
 
 if __name__ == '__main__':
