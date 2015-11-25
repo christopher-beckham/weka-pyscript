@@ -2,7 +2,7 @@
 PackageName=PyScript
 
 # Version (required)
-Version=0.2.1
+Version=0.3.0
 
 #Date
 Date=05-10-2015
@@ -22,15 +22,15 @@ Maintainer=Christopher Beckham <cjb60 at students dot waikato dot ac dot nz>
 License=GPL 3.0
 
 # Description (required)
-Description=Classifier that is able to call arbitrary Python scripts that conform to the structure expected by this package. Allows classification and regression schemes in Python to be called by WEKA.
+Description=Classifiers (classification and regression) and filters that are able to call arbitrary Python scripts that conform to the structure expected by this package.
 
 # Changes=
 
 # Package URL for obtaining the package archive (required)
-PackageURL=http://github.com/chrispy645/weka-pyscript/releases/download/0.2.1/PyScriptClassifier.zip
+PackageURL=http://github.com/christopher-beckham/weka-pyscript/releases/download/0.3.0/PyScript.zip
 
 # URL for further information
-URL=http://github.com/chrispy645/weka-pyscript
+URL=http://github.com/christopher-beckham/weka-pyscript
 
 # Enhances various other packages ?
 # Enhances=packageName1,packageName2,...

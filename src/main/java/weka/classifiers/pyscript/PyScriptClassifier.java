@@ -399,11 +399,11 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	        int numClasses = insts.numClasses();
 	        
 	        // remove the class attribute
-	        Remove r = new Remove();
-	        r.setAttributeIndices("" + (insts.classIndex() + 1));
-	        r.setInputFormat(insts);
-	        insts = Filter.useFilter(insts, r);
-	        insts.setClassIndex(-1);
+	        //Remove r = new Remove();
+	        //r.setAttributeIndices("" + (insts.classIndex() + 1));
+	        //r.setInputFormat(insts);
+	        //insts = Filter.useFilter(insts, r);
+	        //insts.setClassIndex(-1);
 		    
 	    	String driver = "import imp\n"
 	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";

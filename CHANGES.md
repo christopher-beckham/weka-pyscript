@@ -1,3 +1,9 @@
+0.3.0
+---
+
+* Filters have now been implemented.
+* Classifier and filter classes satisfy base unit tests.
+
 0.2.1
 ---
 
