@@ -1,6 +1,9 @@
 package weka.filters.pyscript;
 
 import java.io.File;
+
+import weka.core.Instances;
+import weka.core.TestInstances;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.AbstractFilterTest;
 import weka.filters.Filter;
@@ -26,5 +29,20 @@ public class PyScriptFilterTestBase extends AbstractFilterTest {
 		f.setSaveScript(true);
 		return f;
 	}
+	
+	@Override
+	protected Instances getFilteredClassifierData() throws Exception {
+		
+		TestInstances test = TestInstances.forCapabilities(
+				m_FilteredClassifier.getClassifier().getCapabilities());
+		test.setNumDate(0);
+		test.setClassIndex(TestInstances.CLASS_IS_LAST);
+
+		Instances result = test.generate();
+		System.out.println(result);
+
+		return result;
+	}
+	
 
 }

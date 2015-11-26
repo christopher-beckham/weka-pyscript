@@ -188,7 +188,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    
 		    // ok now filter
 		    // m_session.executeScript("args['X'] = args['X_train'][0:1]\nargs['y'] = args['y_train'][0:1]\n", getDebug());
-		    m_session.executeScript("import numpy as np; args['X'] = args['y'] = np.ones((0,0));\n", getDebug());
+		    m_session.executeScript("import numpy as np; args['X'] = np.ones((0,0));\n", getDebug());
 		    driver = "arff = cls.process(args, model)";
 		    executeScript(driver, "An error happened while executing the process() function:");
 		    
@@ -254,12 +254,15 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	    	executeScript(m_argsScript, "An error happened while trying to create the args variable:" );
 	    	
 		    m_session.instancesToPythonAsScikitLearn(data, "test", false);
-		    m_session.executeScript("args['X'] = X\nargs['y'] = Y", getDebug());    	
-			
+		    m_session.executeScript("args['X'] = X\n", getDebug());
+		    if(data.classIndex() >= 0) {
+		    	m_session.executeScript("args['y'] = Y", getDebug());
+		    }
+		    
 		    m_session.setPythonPickledVariableValue("model", m_pickledModel, getDebug());
 		    
 		    driver = "arff = cls.process(args, model)";
-		    executeScript(driver, "An error happened while executing the filter() function:");
+		    executeScript(driver, "An error happened while executing the process() function:");
 		    
 		    String arff = m_session.getVariableValueFromPythonAsPlainString("arff", getDebug());
 		    DataSource ds = new DataSource( new ByteArrayInputStream(arff.getBytes("UTF-8") ) );

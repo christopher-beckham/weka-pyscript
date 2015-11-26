@@ -12,7 +12,8 @@ def train(args):
     for i in range(0, X_train.shape[1]):
         if attr_types[ attributes[i] ] == "numeric":
             means.append( np.nanmean(X_train[:,i]) )
-            sds.append( np.nanstd(X_train[:,i], ddof=1) )
+            sds.append(
+                np.nanstd(X_train[:,i], ddof=1) )
         else:
             means.append(None)
             sds.append(None)
