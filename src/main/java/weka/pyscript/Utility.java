@@ -161,6 +161,7 @@ public class Utility {
 	    if(df.classIndex() != -1) {
 	    	String classAttr = escape(df.classAttribute().name());
 	    	script.append( "args['class'] = '" + classAttr + "'\n");
+	    	script.append( "args['class_index'] = " + df.classIndex() + "\n");
 	    }
 	    
 	    // pass attribute types

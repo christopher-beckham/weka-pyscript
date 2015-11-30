@@ -35,6 +35,8 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	private final File DEFAULT_PYFILE = new File( System.getProperty("user.dir") );
 	private final String DEFAULT_TRAIN_PYFILE_PARAMS = "";
 	
+	private final boolean DEFAULT_IGNORE_CLASS = false;
+	
 	private String m_pythonCommand = DEFAULT_PYTHON_COMMAND;
 	
 	/** The default Python script to execute */
@@ -47,6 +49,10 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	
 	private String m_pickledModel = null;
 	private String m_pyScript = null;
+	
+	private boolean m_ignoreClass = DEFAULT_IGNORE_CLASS;
+	
+	private int m_classIndex = 0;
 	
 	@OptionMetadata(
 		displayName = "arguments",
@@ -111,6 +117,19 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		m_saveScript = b;
 	}
 	
+	@OptionMetadata(
+		displayName = "ignoreClass", commandLineParamName = "ignore-class",
+		description = "Save script in model?",
+		commandLineParamSynopsis = "-ignore-class", commandLineParamIsFlag = true, displayOrder = 4
+	)	
+	public boolean getIgnoreClass() {
+		return m_ignoreClass;
+	}
+	
+	public void setIgnoreClass(boolean b) {
+		m_ignoreClass = b;
+	}
+	
 	private void executeScript(String driver, String stdErrMessage) throws Exception {
 		List<String> out = m_session.executeScript(driver, getDebug());
 		if( stdErrMessage != null) {
@@ -140,12 +159,31 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		result.enable(Capability.NO_CLASS);
 		return result;
 	}
+	
+	public String newArgsToArff(boolean trainMode) {
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("from pyscript.pyscript import get_header, instance_to_string\n");
+	    sb.append("header = get_header(new_args)\n");
+	    sb.append("buf = [header]\n");
+	    if(!trainMode) {
+	    	sb.append("for i in range(0, new_args['X'].shape[0]):\n");
+	    	sb.append("  buf.append(instance_to_string(new_args['X'][i], new_args['y'][i], new_args))\n");
+	    }
+	    sb.append("arff = \"\\n\".join(buf)\n");
+	    //System.out.println(sb.toString());
+	    return sb.toString();
+	}
 
 	@Override
 	protected Instances determineOutputFormat(Instances data)
 			throws Exception {
 		
 		//getCapabilities().testWithFail(data);
+		
+		if (m_ignoreClass) {
+			m_classIndex = data.classIndex();
+			inputFormatPeek().setClassIndex(-1);
+		}
 		
 		try {
 			
@@ -177,6 +215,9 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    m_session.executeScript("args['X_train'] = X\n", getDebug());
 		    if(data.classIndex() >= 0) {
 		    	m_session.executeScript("args['y_train'] = Y\n", getDebug());
+		    } else {
+		    	m_session.executeScript(
+			    	String.format("args['y_train'] = np.zeros((%d,0))", data.numInstances()), getDebug());
 		    }
 		    
 		    // build the classifier
@@ -188,9 +229,12 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    
 		    // ok now filter
 		    // m_session.executeScript("args['X'] = args['X_train'][0:1]\nargs['y'] = args['y_train'][0:1]\n", getDebug());
-		    m_session.executeScript("import numpy as np; args['X'] = np.ones((0,0));\n", getDebug());
-		    driver = "arff = cls.process(args, model)";
+		    m_session.executeScript("import numpy as np; args['X'] = args['y'] = np.zeros((0,0));\n", getDebug());
+		    driver = "new_args = cls.process(args, model)";    
 		    executeScript(driver, "An error happened while executing the process() function:");
+		    
+		    // ok, now turn this new args into an arff file
+		    executeScript(newArgsToArff(true), "An error happened while processing the args returned by process():");
 		    
 		    String arff = m_session.getVariableValueFromPythonAsPlainString("arff", getDebug());
 		    //System.out.println(arff);
@@ -198,8 +242,13 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    DataSource ds = new DataSource( new ByteArrayInputStream(arff.getBytes("UTF-8") ) );
 		    Instances transformed = ds.getDataSet();
 		    
-		    // assumption we make for now
-		    transformed.setClassIndex( transformed.numAttributes() - 1);
+		    if(data.classIndex() >= 0) {
+		    	driver = "new_class_index = args['class_index']";
+		    	executeScript(driver, "An error happened while trying to extract class_index from args:");
+		    	int newClassIndex = Integer.parseInt(
+		    		m_session.getVariableValueFromPythonAsPlainString("new_class_index", getDebug()));
+		    	transformed.setClassIndex(newClassIndex);
+		    }
 		    
 		    //System.out.println(transformed);
 
@@ -257,17 +306,29 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    m_session.executeScript("args['X'] = X\n", getDebug());
 		    if(data.classIndex() >= 0) {
 		    	m_session.executeScript("args['y'] = Y", getDebug());
+		    } else {
+		    	m_session.executeScript(
+		    		String.format("args['y'] = np.zeros((%d,0))", data.numInstances()), getDebug());
 		    }
 		    
 		    m_session.setPythonPickledVariableValue("model", m_pickledModel, getDebug());
 		    
-		    driver = "arff = cls.process(args, model)";
+		    driver = "new_args = cls.process(args, model)";
 		    executeScript(driver, "An error happened while executing the process() function:");
+		    
+		    // ok, now turn this new args into an arff file
+		    executeScript(newArgsToArff(false), "An error happened while processing the args returned by process():");
 		    
 		    String arff = m_session.getVariableValueFromPythonAsPlainString("arff", getDebug());
 		    DataSource ds = new DataSource( new ByteArrayInputStream(arff.getBytes("UTF-8") ) );
 		    Instances transformed = ds.getDataSet();
-		    transformed.setClassIndex( data.numAttributes() - 1);
+		    if(data.classIndex() >= 0) {
+		    	driver = "new_class_index = args['class_index']";
+		    	executeScript(driver, "An error happened while trying to extract class_index from args:");
+		    	int newClassIndex = Integer.parseInt(
+		    		m_session.getVariableValueFromPythonAsPlainString("new_class_index", getDebug()));
+		    	transformed.setClassIndex(newClassIndex);
+		    }
 		    
 		    return transformed;
 	    

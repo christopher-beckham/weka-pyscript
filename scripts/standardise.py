@@ -21,29 +21,22 @@ def train(args):
 
 def process(args, model):
     X = args["X"]
-    y = args["y"]
     attr_types = args["attr_types"]
     attributes = args["attributes"]
-    means = model[0]
-    sds = model[1]
+    means, sds = model
     for i in range(0, X.shape[1]):
         if attr_types[ attributes[i] ] == "numeric":
             X[:,i] = (X[:,i] - means[i]) / sds[i]
-    header = get_header(args)
-    buf = [header]
-    for i in range(0, X.shape[0]):
-        buf.append(
-            instance_to_string(X[i], y[i], args) )
-    return "\n".join(buf)
+    return args
         
 if __name__ == '__main__':
     x = ArffToArgs()
     x.set_input("../datasets/iris.arff")
     x.set_class_index("last")
     args = x.get_args()
+    print (args.keys())
     x.close()
-    print(args["attr_types"])
     model = train(args)
     args["X"] = args["X_train"]
     args["y"] = args["y_train"]
-    print(process(args, model))
+    process(args, model)

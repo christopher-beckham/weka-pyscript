@@ -23,7 +23,8 @@ class uses(object):
         self.used_args = used_args
         self.defaults = set([
             "X_train", "y_train", "X_test", "class_type", "relation_name",
-            "attributes", "attr_values", "class", "num_classes", "attr_types"
+            "attributes", "attr_values", "class", "num_classes", "attr_types",
+            "class_index"
         ])
     def __call__(self, f):
         def wrapped_f(*args):
@@ -127,8 +128,8 @@ def instance_to_string(x, y, args):
                 string_vector.append( str(attr_values[ attributes[i] ][ int(x[i]) ] ) )
             else:
                 string_vector.append( str( x[i] ) )
-    if y != None:
-        if np.isnan(y[0]):
+    if y.shape[0] != 0:
+        if np.isnan(y):
             string_vector.append("?")
         else:
             string_vector.append( attr_values[ args["class"] ][int(y[0])] )
