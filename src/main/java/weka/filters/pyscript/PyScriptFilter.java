@@ -52,7 +52,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	
 	private boolean m_ignoreClass = DEFAULT_IGNORE_CLASS;
 	
-	private int m_classIndex = 0;
+	private int m_originalClassIndex = 0;
 	
 	@OptionMetadata(
 		displayName = "arguments",
@@ -178,14 +178,12 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	protected Instances determineOutputFormat(Instances data)
 			throws Exception {
 		
-		//getCapabilities().testWithFail(data);
-		
-		if (m_ignoreClass) {
-			m_classIndex = data.classIndex();
-			inputFormatPeek().setClassIndex(-1);
-		}
-		
 		try {
+			
+			if (m_ignoreClass) {
+				m_originalClassIndex = data.classIndex();
+				data.setClassIndex(-1);
+			}
 			
 			// first train the filter
 			m_session = Utility.initPythonSession( this, getPythonCommand(), getDebug() );
@@ -242,12 +240,18 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    DataSource ds = new DataSource( new ByteArrayInputStream(arff.getBytes("UTF-8") ) );
 		    Instances transformed = ds.getDataSet();
 		    
+		    // if we don't ignore the class index, and args tells us that the class index
+		    // is something else, change it
 		    if(data.classIndex() >= 0) {
 		    	driver = "new_class_index = args['class_index']";
 		    	executeScript(driver, "An error happened while trying to extract class_index from args:");
 		    	int newClassIndex = Integer.parseInt(
 		    		m_session.getVariableValueFromPythonAsPlainString("new_class_index", getDebug()));
 		    	transformed.setClassIndex(newClassIndex);
+		    } else {
+		    	// if we ignored the class index, then just set it back to what it was initially,
+		    	// which is denoted by the member variable m_classIndex
+		    	transformed.setClassIndex(m_originalClassIndex);
 		    }
 		    
 		    //System.out.println(transformed);
@@ -272,6 +276,12 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	protected Instances process(Instances data) throws Exception {
 		
 		try {
+			
+			if (m_ignoreClass) {
+				m_originalClassIndex = data.classIndex();
+				data.setClassIndex(-1);
+			}
+			
 			m_session = Utility.initPythonSession( this, getPythonCommand(), getDebug() );
 			
 			// see if the python file exists
@@ -328,6 +338,8 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    	int newClassIndex = Integer.parseInt(
 		    		m_session.getVariableValueFromPythonAsPlainString("new_class_index", getDebug()));
 		    	transformed.setClassIndex(newClassIndex);
+		    } else {
+		    	data.setClassIndex(m_originalClassIndex);
 		    }
 		    
 		    return transformed;

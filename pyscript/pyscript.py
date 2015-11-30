@@ -132,7 +132,10 @@ def instance_to_string(x, y, args):
         if np.isnan(y):
             string_vector.append("?")
         else:
-            string_vector.append( attr_values[ args["class"] ][int(y[0])] )
+            if args["class_type"] == "nominal":
+                string_vector.append( attr_values[ args["class"] ][int(y[0])] )
+            else:
+                string_vector.append( str(y[0]) )
     return ",".join(string_vector)
 
 if __name__ == '__main__':
