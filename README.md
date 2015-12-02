@@ -97,6 +97,16 @@ We can also write Python scripts that act as filters. Here, we apply zero-mean u
 ```
 java weka.Run .PyScriptFilter \
   -script scripts/standardise.py \
-  -i datasets/iris.arff \
+  -i datasets/diabetes_numeric.arff \
+  -c last
+```
+
+By default, the standardisation is not applied to the class attribute. If we want the class attribute to be processed, we can use the `-ignore-class` flag:
+
+```
+java weka.Run .PyScriptFilter \
+  -script scripts/standardise.py \
+  -i datasets/diabetes_numeric.arff \
+  -ignore-class \
   -c last
 ```
