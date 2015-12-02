@@ -81,6 +81,35 @@ public class PyScriptFilterTest {
 		
 		assert( classAttributeValues[0] != filteredData.attributeToDoubleArray(filteredData.classIndex())[0] );
 	}
+	
+	/**
+	 * Test that standardise script on Iris works the same
+	 * whether or not the class attribute is ignored (since
+	 * the class attribute in this case is nominal)
+	 * @throws Exception
+	 */
+	@Test
+	public void testIgnoreClassOnIris() throws Exception {
+		DataSource ds = new DataSource("datasets/iris.arff");
+		Instances data = ds.getDataSet();
+		data.setClassIndex(data.numAttributes()-1);
+		
+		PyScriptFilter f1 = new PyScriptFilter();
+		f1.setPythonFile(new File("scripts/standardise.py"));
+		//f1.setIgnoreClass(false);
+		f1.setInputFormat(data);
+		Instances f1Data = Filter.useFilter(data, f1);
+		
+		PyScriptFilter f2 = new PyScriptFilter();
+		f2.setPythonFile(new File("scripts/standardise.py"));
+		f2.setIgnoreClass(true);
+		f2.setInputFormat(data);
+		Instances f2Data = Filter.useFilter(data, f2);
+		
+		for(int x = 0; x < f1Data.numInstances(); x++) {
+			assertArrayEquals(f1Data.get(x).toDoubleArray(), f2Data.get(x).toDoubleArray(), 1e-6);
+		}
+	}
 
 	/**
 	 * Test to see if the script save feature works.
