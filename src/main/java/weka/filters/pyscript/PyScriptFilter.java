@@ -242,7 +242,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    
 		    // if we don't ignore the class index, and args tells us that the class index
 		    // is something else, change it
-		    if(data.classIndex() >= 0) {
+		    /*if(data.classIndex() >= 0) {
 		    	driver = "new_class_index = args['class_index']";
 		    	executeScript(driver, "An error happened while trying to extract class_index from args:");
 		    	int newClassIndex = Integer.parseInt(
@@ -252,7 +252,8 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    	// if we ignored the class index, then just set it back to what it was initially,
 		    	// which is denoted by the member variable m_classIndex
 		    	transformed.setClassIndex(m_originalClassIndex);
-		    }
+		    }*/
+		    transformed.setClassIndex(transformed.numAttributes()-1);
 		    
 		    //System.out.println(transformed);
 
@@ -332,6 +333,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    String arff = m_session.getVariableValueFromPythonAsPlainString("arff", getDebug());
 		    DataSource ds = new DataSource( new ByteArrayInputStream(arff.getBytes("UTF-8") ) );
 		    Instances transformed = ds.getDataSet();
+		    /*
 		    if(data.classIndex() >= 0) {
 		    	driver = "new_class_index = args['class_index']";
 		    	executeScript(driver, "An error happened while trying to extract class_index from args:");
@@ -341,6 +343,8 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    } else {
 		    	data.setClassIndex(m_originalClassIndex);
 		    }
+		    */
+		    transformed.setClassIndex(transformed.numAttributes()-1);
 		    
 		    return transformed;
 	    

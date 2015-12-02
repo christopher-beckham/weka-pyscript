@@ -1,3 +1,4 @@
+from __future__ import print_function
 from pyscript.pyscript import ArffToArgs
 
 def get_args(filename, sd, bn, im):
@@ -15,4 +16,4 @@ def get_args(filename, sd, bn, im):
 
 
 args = get_args("../datasets/various.arff", True, True, True)
-print args.keys()
+print (args.keys())

@@ -206,6 +206,7 @@
         <include name="zeror.py" />
         <include name="scikit-rf.py" />
 	<include name="standardise.py" />
+	<include name="add-gauss-noise.py" />
       </fileset>
     </copy>
 

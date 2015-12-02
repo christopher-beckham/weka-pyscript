@@ -23,8 +23,7 @@ class uses(object):
         self.used_args = used_args
         self.defaults = set([
             "X_train", "y_train", "X_test", "class_type", "relation_name",
-            "attributes", "attr_values", "class", "num_classes", "attr_types",
-            "class_index"
+            "attributes", "attr_values", "class", "num_classes", "attr_types"
         ])
     def __call__(self, f):
         def wrapped_f(*args):

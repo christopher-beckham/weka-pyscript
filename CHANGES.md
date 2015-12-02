@@ -1,3 +1,10 @@
+0.4.0
+---
+
+* Filter system has changed - instead of process() returning an ARFF, it simply returns args.
+* Add ignore class functionality (`ignore-class`).
+* Fix bug in `instance_to_string` where it was assumed instances were not regression ones.
+
 0.3.0
 ---
 
