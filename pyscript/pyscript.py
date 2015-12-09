@@ -127,7 +127,7 @@ def instance_to_string(x, y, args):
                 string_vector.append( str(attr_values[ attributes[i] ][ int(x[i]) ] ) )
             else:
                 string_vector.append( str( x[i] ) )
-    if y.shape[0] != 0:
+    if y != None: # y.shape[0] != 0
         if np.isnan(y):
             string_vector.append("?")
         else:

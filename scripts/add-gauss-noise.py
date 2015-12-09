@@ -6,7 +6,6 @@ def train(args):
 
 def process(args, model):
     X = args["X"]
-    y = args["y"]
     mean = args["mean"] if "mean" in args else 0
     sd = args["sd"] if "sd" in args else 1
     if "class" in args:
@@ -31,5 +30,4 @@ if __name__ == '__main__':
     x.close()
     model = train(args)
     args["X"] = args["X_train"]
-    args["y"] = args["y_train"]
     print process(args, model)

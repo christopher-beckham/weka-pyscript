@@ -31,11 +31,10 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	
 	private final String DEFAULT_PYTHON_COMMAND = "python";
 	private final boolean DEFAULT_SAVE_SCRIPT = false;
-	
 	private final File DEFAULT_PYFILE = new File( System.getProperty("user.dir") );
 	private final String DEFAULT_TRAIN_PYFILE_PARAMS = "";
-	
 	private final boolean DEFAULT_IGNORE_CLASS = false;
+	private final boolean DEFAULT_PRINT_STDOUT = false;
 	
 	private String m_pythonCommand = DEFAULT_PYTHON_COMMAND;
 	
@@ -51,8 +50,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	private String m_pyScript = null;
 	
 	private boolean m_ignoreClass = DEFAULT_IGNORE_CLASS;
-	
-	private int m_originalClassIndex = 0;
+	private boolean m_printStdOut = DEFAULT_PRINT_STDOUT;
 	
 	@OptionMetadata(
 		displayName = "arguments",
@@ -98,8 +96,17 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		return "Class for calling filters that are Python scripts.";
 	}
 	
+	@OptionMetadata(
+		displayName = "printStdOut", commandLineParamName = "stdout",
+		description = "Print standard out from Python script to stderr?",
+		commandLineParamSynopsis = "-stdout", commandLineParamIsFlag = true, displayOrder = 4
+	)
 	public boolean getPrintStdOut() {
-		return true;
+		return m_printStdOut;
+	}
+
+	public void setPrintStdOut(boolean b) {
+		m_printStdOut = b;
 	}
 	
 	boolean m_saveScript = DEFAULT_SAVE_SCRIPT;
@@ -167,7 +174,10 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	    sb.append("buf = [header]\n");
 	    if(!trainMode) {
 	    	sb.append("for i in range(0, new_args['X'].shape[0]):\n");
-	    	sb.append("  buf.append(instance_to_string(new_args['X'][i], new_args['y'][i], new_args))\n");
+	    	sb.append("  if 'y' in new_args:\n");
+	    	sb.append("    buf.append(instance_to_string(new_args['X'][i], new_args['y'][i], new_args))\n");
+	    	sb.append("  else:\n");
+	    	sb.append("    buf.append(instance_to_string(new_args['X'][i], None, new_args))\n");
 	    }
 	    sb.append("arff = \"\\n\".join(buf)\n");
 	    //System.out.println(sb.toString());
@@ -181,7 +191,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		try {
 			
 			if (m_ignoreClass) {
-				m_originalClassIndex = data.classIndex();
+				//m_originalClassIndex = data.classIndex();
 				data.setClassIndex(-1);
 			}
 			
@@ -214,8 +224,8 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    if(data.classIndex() >= 0) {
 		    	m_session.executeScript("args['y_train'] = Y\n", getDebug());
 		    } else {
-		    	m_session.executeScript(
-			    	String.format("args['y_train'] = np.zeros((%d,0))", data.numInstances()), getDebug());
+		    	//m_session.executeScript(
+			    //	String.format("args['y_train'] = np.zeros((%d,0))", data.numInstances()), getDebug());
 		    }
 		    
 		    // build the classifier
@@ -279,7 +289,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		try {
 			
 			if (m_ignoreClass) {
-				m_originalClassIndex = data.classIndex();
+				//m_originalClassIndex = data.classIndex();
 				data.setClassIndex(-1);
 			}
 			
@@ -318,8 +328,8 @@ public class PyScriptFilter extends SimpleBatchFilter {
 		    if(data.classIndex() >= 0) {
 		    	m_session.executeScript("args['y'] = Y", getDebug());
 		    } else {
-		    	m_session.executeScript(
-		    		String.format("args['y'] = np.zeros((%d,0))", data.numInstances()), getDebug());
+		    	//m_session.executeScript(
+		    	//	String.format("args['y'] = np.zeros((%d,0))", data.numInstances()), getDebug());
 		    }
 		    
 		    m_session.setPythonPickledVariableValue("model", m_pickledModel, getDebug());
