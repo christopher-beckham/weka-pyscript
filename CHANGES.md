@@ -1,3 +1,9 @@
+0.4.1
+---
+
+* Filter now has `-stdout` flag.
+* `y` should now not exist in `args` if class attribute is not set (or if it is ignored).
+
 0.4.0
 ---
 
