@@ -14,13 +14,15 @@ Installation
 This package requires the following:
 
 * The latest and greatest version of WEKA. The nightly developer snapshot can be downloaded [here](http://www.cs.waikato.ac.nz/~ml/weka/snapshots/weka_snapshots.html).
+  * Extract the `weka.jar` inside `developer-branch.zip`, and add it to the `$CLASSPATH` variable.
+  * To run WEKA, simply run `java weka.gui.GUIChooser`.
 * The [wekaPython](http://weka.sourceforge.net/packageMetaData/wekaPython/index.html) package written by Mark Hall. This package is actually a wrapper for Scikit-Learn, but it has code that makes it possible to interact with Python scripts.
+  * You can install this using the WEKA package manager in the GUI chooser (`Tools` > `Package Manager`).
+  * Ensure that `wekaPython.jar` is in your `$CLASSPATH` variable as well. This .jar can be found in the `$WEKA_HOME/packages/wekaPython/` directory. 
 * An installation of Python 2.7 with libraries installed such as Numpy and Pandas. The easiest (and safest) way to get these is to download the [Anaconda](http://continuum.io/downloads) distribution, since it comes with many essential packages preloaded.
 * [ant](http://ant.apache.org/) to be able to build the package.
 * Java 8, but 7 could probably work too.
 * (Optional) [Theano](https://github.com/Theano/Theano) to be able to run the linear regression example.
-
-When you have installed both of these, ensure that `wekaPython.jar` is in your `$CLASSPATH` variable. This .jar can be found in the `$WEKA_HOME/packages/wekaPython/` directory. I also assume that you have `weka.jar` in your classpath variable as well.
 
 Now, download this Git repo, cd into the directory and run the following:
 
