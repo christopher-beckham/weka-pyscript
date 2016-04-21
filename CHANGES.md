@@ -1,4 +1,4 @@
-0.4.2
+0.5.0
 ---
 
 * Renamed Python module so rather than `from pyscript.pyscript import ...` it is `from wekapyscript import ...`
