@@ -169,7 +169,7 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	
 	public String newArgsToArff(boolean trainMode) {
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("from pyscript.pyscript import get_header, instance_to_string\n");
+	    sb.append("from wekapyscript import get_header, instance_to_string\n");
 	    sb.append("header = get_header(new_args)\n");
 	    sb.append("buf = [header]\n");
 	    if(!trainMode) {

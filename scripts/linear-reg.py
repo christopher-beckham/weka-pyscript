@@ -10,7 +10,7 @@ try:
 except ImportError:
     import pickle
 
-from pyscript.pyscript import ArffToArgs, uses
+from wekapyscript import ArffToArgs, uses
 
 @uses(["alpha", "epsilon"])
 def train(args):

@@ -1,6 +1,6 @@
 from __future__ import print_function
 from sklearn.ensemble import RandomForestClassifier
-from pyscript.pyscript import ArffToArgs, uses
+from wekapyscript import ArffToArgs, uses
 
 @uses(["num_trees"])
 def train(args):

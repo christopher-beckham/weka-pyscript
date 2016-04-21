@@ -1,4 +1,4 @@
-from pyscript.pyscript import ArffToArgs, get_header, instance_to_string
+from wekapyscript import ArffToArgs, get_header, instance_to_string
 import numpy as np
 
 def train(args):

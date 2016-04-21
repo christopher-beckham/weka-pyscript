@@ -1,14 +1,14 @@
 # Package name (required)
-PackageName=PyScript
+PackageName=WekaPyScript
 
 # Version (required)
-Version=0.4.1
+Version=0.4.2
 
 #Date
-Date=05-10-2015
+Date=22-04-2016
 
 # Title (required)
-Title=PyScript
+Title=WekaPyScript
 
 Category=Classification
 

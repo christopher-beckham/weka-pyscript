@@ -203,4 +203,16 @@ public class ArffToPickle implements CommandlineRunnable {
 	public static void main(String[] args) {
 		new ArffToPickle().run(new ArffToPickle(), args);
 	}
+
+	@Override
+	public void preExecution() throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void postExecution() throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
 }

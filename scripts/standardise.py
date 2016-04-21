@@ -1,5 +1,5 @@
 from __future__ import print_function
-from pyscript.pyscript import ArffToArgs, \
+from wekapyscript import ArffToArgs, \
     get_header, instance_to_string
 import numpy as np
 

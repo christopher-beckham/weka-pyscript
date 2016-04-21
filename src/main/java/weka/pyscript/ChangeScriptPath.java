@@ -2,6 +2,7 @@ package weka.pyscript;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+
 import weka.classifiers.pyscript.PyScriptClassifier;
 import weka.core.CommandlineRunnable;
 import weka.core.SerializationHelper;
@@ -92,6 +93,18 @@ public class ChangeScriptPath implements CommandlineRunnable {
 	
 	public static void main(String[] args) {
 		new ChangeScriptPath().run(new ChangeScriptPath(), args);
+	}
+
+	@Override
+	public void preExecution() throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void postExecution() throws Exception {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

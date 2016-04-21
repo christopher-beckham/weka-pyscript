@@ -14,6 +14,6 @@ fi
 CLASSPATH=$WEKA_HOME/weka.jar:$WEKA_PYTHON_JAR
 
 ant clean
-ant make_package -Dpackage=PyScript
+ant make_package -Dpackage=WekaPyScript
 cd dist
-java weka.core.WekaPackageManager -offline -install-package PyScript.zip
+java weka.core.WekaPackageManager -offline -install-package WekaPyScript.zip

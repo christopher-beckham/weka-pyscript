@@ -1,3 +1,10 @@
+0.4.2
+---
+
+* Renamed Python module so rather than `from pyscript.pyscript import ...` it is `from wekapyscript import ...`
+* Renamed package to WekaPyScript, to avoid confusion
+* Now works on latest build of WEKA
+
 0.4.1
 ---
 
