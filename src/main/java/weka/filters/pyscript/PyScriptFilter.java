@@ -12,6 +12,8 @@ import weka.core.DenseInstance;
 import weka.core.Instances;
 import weka.core.OptionMetadata;
 import weka.core.Capabilities.Capability;
+import weka.core.TechnicalInformation;
+import weka.core.TechnicalInformationHandler;
 import weka.core.converters.ConverterUtils.DataSource;
 import weka.filters.SimpleBatchFilter;
 import weka.pyscript.Utility;
@@ -23,7 +25,7 @@ import weka.python.PythonSession;
  * @author cjb60
  *
  */
-public class PyScriptFilter extends SimpleBatchFilter {
+public class PyScriptFilter extends SimpleBatchFilter implements TechnicalInformationHandler {
 
 	private static final long serialVersionUID = -6127927234772532696L;
 	
@@ -93,7 +95,9 @@ public class PyScriptFilter extends SimpleBatchFilter {
 
 	@Override
 	public String globalInfo() {  
-		return "Class for calling filters that are Python scripts.";
+		return "Class for calling filters that are Python scripts."
+		+ "For more information, see\n\n"
+		+ getTechnicalInformation().toString();
 	}
 	
 	@OptionMetadata(
@@ -373,6 +377,11 @@ public class PyScriptFilter extends SimpleBatchFilter {
 	
 	public static void main(String[] argv) {
 		runFilter(new PyScriptFilter(), argv);
+	}
+
+	@Override
+	public TechnicalInformation getTechnicalInformation() {
+		return Utility.getTechnicalInformation();
 	}
 
 }

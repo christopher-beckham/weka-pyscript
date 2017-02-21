@@ -461,10 +461,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	
 	@Override
 	public TechnicalInformation getTechnicalInformation() {
-		TechnicalInformation result = new TechnicalInformation(Type.TECHREPORT);
-		result.setValue(Field.AUTHOR, "C. Beckham");
-		result.setValue(Field.TITLE, "Classification and Regression Algorithms for WEKA Implemented in Python" );
-		return result;
+		return Utility.getTechnicalInformation();
 	}
 	
 	@Override

@@ -1,3 +1,8 @@
+0.5.1
+---
+
+* Added updated technical information (pointing to the official journal paper) and made it displayable from 'More' window for the filter
+
 0.5.0
 ---
 

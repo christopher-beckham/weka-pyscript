@@ -9,7 +9,10 @@ import java.util.List;
 
 import weka.core.Attribute;
 import weka.core.Instances;
+import weka.core.TechnicalInformation;
 import weka.core.Utils;
+import weka.core.TechnicalInformation.Field;
+import weka.core.TechnicalInformation.Type;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.NominalToBinary;
 import weka.filters.unsupervised.attribute.ReplaceMissingValues;
@@ -25,6 +28,15 @@ public class Utility {
 	
 	public static final String TRACEBACK_MSG = "Traceback (most recent call last):";
 
+	public static TechnicalInformation getTechnicalInformation() {
+		TechnicalInformation result = new TechnicalInformation(Type.TECHREPORT);
+		result.setValue(Field.AUTHOR, "Christopher Beckham, Mark Hall, Eibe Frank");
+		result.setValue(Field.TITLE, "WekaPyScript: Classification, Regression, and Filter Schemes for WEKA Implemented in Python");
+		result.setValue(Field.JOURNAL, "Journal of Open Research Software");
+		result.setValue(Field.URL, "http://openresearchsoftware.metajnl.com/articles/10.5334/jors.108/");
+		result.setValue(Field.YEAR, "2016");
+		return result;
+	}
 	
 	/**
 	 * Start up a Python session
