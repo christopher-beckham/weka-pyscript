@@ -10,6 +10,7 @@ def describe(args, model):
     return "Majority class: %i" % model
 
 def test(args, model):
-    return [ np.eye( args["num_classes"] )[model]. \
+    m = int(model)
+    return [ np.eye( args["num_classes"] )[m]. \
         tolist() \
         for x in range(0, args["X_test"].shape[0]) ]
