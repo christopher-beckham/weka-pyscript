@@ -49,6 +49,10 @@ def train(args):
         print(this_loss)
         if abs(this_loss - prev_loss) < epsilon:
             break
+        if np.isnan(this_loss):
+            raise Exception("Loss is NaN! Have you made sure to " +
+                            "standardise the attributes before-hand?\n" +
+                            "Also ensure only numeric attributes are present.")
         prev_loss = this_loss
 
     return [ w.get_value(), b.get_value() ]

@@ -221,7 +221,7 @@
     <mkdir dir="${dist}/${package}/wekapyscript" />
     <copy todir="${dist}/${package}/wekapyscript" >
       <fileset dir="wekapyscript">
-        <include name="wekapyscript.py" />
+        <include name="pyscript.py" />
         <include name="__init__.py" />
       </fileset>
     </copy>

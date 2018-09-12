@@ -1,1 +1,1 @@
-from wekapyscript import *
+from .pyscript import *
