@@ -206,8 +206,8 @@ public class PyScriptFilter extends SimpleBatchFilter implements TechnicalInform
 			String parentDir = getPythonFile().getAbsoluteFile().getParent();
 			String scriptName = getPythonFile().getName();
 			if(parentDir != null) {
-				String driver = "import os\nos.chdir('" + parentDir + "')\n";
-				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
+				String driver = "import os\nos.chdir(r'" + parentDir + "')\n";
+				driver += "import sys\nsys.path.append(r'" + parentDir + "')\n";
 				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
 			
@@ -317,8 +317,8 @@ public class PyScriptFilter extends SimpleBatchFilter implements TechnicalInform
 			}
 			
 			if(parentDir != null) {
-				String driver = "import os\nos.chdir('" + parentDir + "')\n";
-				driver += "import sys\nsys.path.append('" + parentDir + "')\n";
+				String driver = "import os\nos.chdir(r'" + parentDir + "')\n";
+				driver += "import sys\nsys.path.append(r'" + parentDir + "')\n";
 				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
 			
