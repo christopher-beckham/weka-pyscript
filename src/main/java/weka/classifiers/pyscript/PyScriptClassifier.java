@@ -248,6 +248,18 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 		return result;
 	}
 
+        // Code needed to replace load_source() function in Python. 
+        private String stringWithPythonCodeToLoadSource(String modname, String filename) {
+	    return "import importlib.util\n" +
+		"import importlib.machinery\n" +
+		"loader = importlib.machinery.SourceFileLoader('" + modname + "', '" + filename + "')\n" +
+		"spec = importlib.util.spec_from_file_location('" + modname + "', '" + filename + "', loader=loader)\n" +
+		"module = importlib.util.module_from_spec(spec)\n" +
+		"sys.modules[module.__name__] = module\n" +
+		"loader.exec_module(module)\n" +
+		modname + " = module\n";
+	}
+    
 	@Override
 	public void buildClassifier(Instances data) throws Exception {
 		
@@ -277,10 +289,9 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
 			
-	    	// now load training and testing class
-	    	String driver = "import imp\n"
-	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
-	    	executeScript(driver, "An error happened while trying to load the Python script:");
+			// now load training and testing class
+			String driver = stringWithPythonCodeToLoadSource("cls", scriptName);
+			executeScript(driver, "An error happened while trying to load the Python script:");
 	    	
 		    if( getShouldImpute() ) {
 		    	m_impute = new ReplaceMissingValues();
@@ -404,9 +415,7 @@ public class PyScriptClassifier extends AbstractClassifier implements BatchPredi
 	        //r.setInputFormat(insts);
 	        //insts = Filter.useFilter(insts, r);
 	        //insts.setClassIndex(-1);
-		    
-	    	String driver = "import imp\n"
-	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
+		String driver = stringWithPythonCodeToLoadSource("cls", scriptName);
 	    	executeScript(driver, "An error happened while trying to load the Python script:");
 	    	executeScript(m_argsScript, "An error happened while trying to create the args variable:" );
 		    

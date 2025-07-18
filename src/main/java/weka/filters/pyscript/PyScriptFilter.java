@@ -170,6 +170,18 @@ public class PyScriptFilter extends SimpleBatchFilter implements TechnicalInform
 		result.enable(Capability.NO_CLASS);
 		return result;
 	}
+
+        // Code needed to replace load_source() function in Python. 
+        private String stringWithPythonCodeToLoadSource(String modname, String filename) {
+	    return "import importlib.util\n" +
+		"import importlib.machinery\n" +
+		"loader = importlib.machinery.SourceFileLoader('" + modname + "', '" + filename + "')\n" +
+		"spec = importlib.util.spec_from_file_location('" + modname + "', '" + filename + "', loader=loader)\n" +
+		"module = importlib.util.module_from_spec(spec)\n" +
+		"sys.modules[module.__name__] = module\n" +
+		"loader.exec_module(module)\n" +
+		modname + " = module\n";
+	}
 	
 	public String newArgsToArff(boolean trainMode) {
 	    StringBuilder sb = new StringBuilder();
@@ -211,10 +223,9 @@ public class PyScriptFilter extends SimpleBatchFilter implements TechnicalInform
 				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
 			
-	    	// now load training and testing class
-	    	String driver = "import imp\n"
-	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
-	    	executeScript(driver, "An error happened while trying to load the Python script:");
+			// now load training and testing class
+		        String driver = stringWithPythonCodeToLoadSource("cls", scriptName);
+			executeScript(driver, "An error happened while trying to load the Python script:");
 	    	
 			m_argsScript = Utility.createArgsScript(data, getArguments(), m_session, getDebug());		
 			executeScript(m_argsScript, "An error happened while trying to create the args variable:");
@@ -322,10 +333,9 @@ public class PyScriptFilter extends SimpleBatchFilter implements TechnicalInform
 				executeScript(driver, "An error happened while trying to change the working directory:");
 			}
 			
-	    	String driver = "import imp\n"
-	    			+ "cls = imp.load_source('cls','" + scriptName + "')\n";
-	    	executeScript(driver, "An error happened while trying to load the Python script:");
-	    	executeScript(m_argsScript, "An error happened while trying to create the args variable:" );
+			String driver = stringWithPythonCodeToLoadSource("cls", scriptName);
+			executeScript(driver, "An error happened while trying to load the Python script:");
+			executeScript(m_argsScript, "An error happened while trying to create the args variable:" );
 	    	
 		    m_session.instancesToPythonAsScikitLearn(data, "test", false);
 		    m_session.executeScript("args['X'] = X\n", getDebug());

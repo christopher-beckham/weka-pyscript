@@ -11,7 +11,8 @@ if [ ! -f $WEKA_PYTHON_JAR ]; then
     exit 1
 fi
 
-CLASSPATH=$WEKA_HOME/weka.jar:$WEKA_PYTHON_JAR
+# WEKA must be in the classpath already
+CLASSPATH=$CLASSPATH:$WEKA_PYTHON_JAR
 
 ant clean
 ant make_package -Dpackage=WekaPyScript
